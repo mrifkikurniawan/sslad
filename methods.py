@@ -5,7 +5,7 @@ import torch.nn as nn
 from class_strategy import *
 from utils import create_instance
 
-class Naive(object):
+class NaiveFinetune(object):
     def __init__(self, 
                  model: edict,
                  optimizer: edict,
@@ -14,7 +14,7 @@ class Naive(object):
         
         self._model = create_instance(model)
         self._model.fc = nn.Linear(2048, 7, bias=True)
-        self._optimizer = getattr(optimizer.module, optimizer.method)(self._model.parameters(), **.optimizerargs)
+        self._optimizer = getattr(optimizer.module, optimizer.method)(self._model.parameters(), **optimizer.args)
         self._criterion = create_instance(criterion) 
     
     @property
