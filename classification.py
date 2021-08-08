@@ -1,10 +1,8 @@
 import torch
-import torchvision.models
-from torch.nn import Linear
 
 import argparse
 import yaml
-from easydict import Easydict as edict
+from easydict import EasyDict as edict
 
 from avalanche.benchmarks.scenarios.generic_benchmark_creation import create_multi_dataset_generic_benchmark
 from avalanche.evaluation.metrics import accuracy_metrics, loss_metrics, class_accuracy_metrics
