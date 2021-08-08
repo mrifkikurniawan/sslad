@@ -1,4 +1,6 @@
-from easydict import Easydict as edict
+from easydict import EasyDict as edict
+
+import torch.nn as nn
 
 from class_strategy import *
 from utils import create_instance
@@ -11,6 +13,7 @@ class Naive(object):
                  ):
         
         self._model = create_instance(model)
+        self._model.fc = nn.Linear(2048, 7, bias=True)
         self._optimizer = getattr(optimizer.module, optimizer.method)(self._model.parameters(), **.optimizerargs)
         self._criterion = create_instance(criterion) 
     
