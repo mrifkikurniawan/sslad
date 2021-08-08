@@ -1,6 +1,6 @@
 method: 
   module: methods
-  method: Naive
+  method: NaiveFinetune
   args:
     model:
       module: torchvision.models
