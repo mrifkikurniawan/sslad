@@ -1,0 +1,19 @@
+method: 
+  module: methods
+  method: Naive
+  args:
+    model:
+      module: torchvision.models
+      method: resnet50
+      args:
+        pretrained: True
+
+    optimizer:
+      module: torch.optim
+      method: SGD
+      args:
+        lr: 0.01
+    
+    criterion:
+      module: torch.nn
+      method: CrossEntropyLoss
