@@ -14,7 +14,7 @@ class NaiveFinetune(object):
         
         self._model = create_instance(model)
         self._model.fc = nn.Linear(2048, 7, bias=True)
-        self._optimizer = getattr(optimizer.module, optimizer.method)(self._model.parameters(), **optimizer.args)
+        self._optimizer = create_instance(optimizer, params=self._model.parameters())
         self._criterion = create_instance(criterion) 
     
     @property
