@@ -12,7 +12,7 @@ from avalanche.training.strategies import Naive
 
 from class_strategy import *
 from classification_util import *
-from utils import create_instance
+from utils import create_instance, seed_everything
 
 
 def main():
@@ -40,10 +40,17 @@ def main():
     # Editing below this line allowed    #
     #                                    #
     ######################################
-
+    seed = 0
     args.root = f"{args.root}/SSLAD-2D/labeled"
     config = edict(yaml.safe_load(open(args.config, "r")))
     device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id >= 0 else "cpu")
+    seed_everything(seed)
+    
+    # print configuration
+    print("--------Configuration--------")
+    print(f"method: {config.method.method}")
+    for k in config.method.args.keys():
+        print(f"{k}: {config.method.args[k]}")
 
     method = create_instance(config.method)
     model = method.model
