@@ -16,6 +16,7 @@ class NaiveFinetune(object):
         self._model.fc = nn.Linear(2048, 7, bias=True)
         self._optimizer = create_instance(optimizer, params=self._model.parameters())
         self._criterion = create_instance(criterion) 
+        self._plugins = self.initialize_plugins()
     
     @property
     def model(self):
@@ -34,4 +35,4 @@ class NaiveFinetune(object):
         return self._plugins
     
     def initialize_plugins(self):
-        self._plugins = ClassStrategyPlugin()
+        return ClassStrategyPlugin()
