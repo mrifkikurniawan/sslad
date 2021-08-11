@@ -48,6 +48,11 @@ def main():
     
     # print configuration
     print("--------Configuration--------")
+    print(f"gpu_id: {args.gpu_id}")
+    print(f"log path: {args.name}")
+    print(f"num workers: {args.num_workers}")
+    print(f"store prediction: {args.store}")
+    print(f"eval on test set: {args.test}")
     print(f"method: {config.method.method}")
     for k in config.method.args.keys():
         print(f"{k}: {config.method.args[k]}")
