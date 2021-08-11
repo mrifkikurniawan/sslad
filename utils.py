@@ -25,3 +25,20 @@ def create_instance(module_cfg: Union[dict, edict], **kwargs):
         instance = module()
         
     return instance
+
+
+def seed_everything(seed_value):
+  import os
+  os.environ['PYTHONHASHSEED'] = str(seed_value)
+  import random 
+  random.seed(seed_value) # Python
+  import numpy as np
+  np.random.seed(seed_value) # cpu vars
+  import torch
+  torch.manual_seed(seed_value) # cpu  vars
+  
+  if torch.cuda.is_available(): 
+    torch.cuda.manual_seed(seed_value)
+    torch.cuda.manual_seed_all(seed_value) # gpu vars
+    torch.backends.cudnn.deterministic = True  #needed
+    torch.backends.cudnn.benchmark = False
