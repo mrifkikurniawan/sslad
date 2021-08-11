@@ -1,7 +1,7 @@
 # naive fine-tuning
-nohup python3 classification.py \
---name result/ \
---root logs/ \
+nohup python3.9 classification.py \
+--name finetune \
+--root /home/rifki/continual_learning/datasets \
 --num_workers 4 \
 --store \
 --gpu_id 4 \
