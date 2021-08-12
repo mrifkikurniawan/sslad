@@ -70,4 +70,4 @@ class EWC(object):
         return self._plugins
     
     def initialize_plugins(self):
-        return EWCPlugin(ewc_lambda=0.4, decay_factor=0.1)
+        return EWCPlugin(ewc_lambda=0.4, decay_factor=0.1, mode="separate")
