@@ -13,6 +13,7 @@ from avalanche.training.strategies import Naive
 from class_strategy import *
 from classification_util import *
 from utils import create_instance, seed_everything
+from torch.utils.tensorboard import SummaryWriter
 
 
 def main():
@@ -44,6 +45,7 @@ def main():
     args.root = f"{args.root}/SSLAD-2D/labeled"
     config = edict(yaml.safe_load(open(args.config, "r")))
     device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id >= 0 else "cpu")
+    logger = SummaryWriter(log_dir=args.name)
     seed_everything(seed)
     
     # print configuration
@@ -56,6 +58,11 @@ def main():
     print(f"method: {config.method.method}")
     for k in config.method.args.keys():
         print(f"{k}: {config.method.args[k]}")
+        
+    # logging
+    logger.add_hparams(args)
+    hparams = edict(method=config.method)
+    logger.add_hparams(hparams)
 
     method = create_instance(config.method)
     model = method.model
@@ -119,6 +126,8 @@ def main():
     print(f"Final mean test accuracy: {accuracies_test[-1] * 100:.3f}%",
           file=open(f'./{args.name}.log', 'a'))
 
-
+    logger.add_scalar("Average mean test accuracy", sum(accuracies_test) / len(accuracies_test) * 100)
+    logger.add_scalar("Final mean test accuracy", accuracies_test[-1] * 100)
+    
 if __name__ == '__main__':
     main()
