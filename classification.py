@@ -60,9 +60,11 @@ def main():
         print(f"{k}: {config.method.args[k]}")
         
     # logging
-    logger.add_text(args)
+    for k in args.keys():
+        logger.add_text(k, str(args[k]))
     hparams = edict(method=config.method)
-    logger.add_text(str(hparams))
+    for k in hparams.keys():
+        logger.add_text(k, str(hparams[k]))
 
     method = create_instance(config.method)
     model = method.model
