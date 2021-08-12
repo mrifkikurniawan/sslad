@@ -17,8 +17,8 @@ class MLP(nn.Module):
                                         nn.Linear(512, num_classes, bias=False))
         
         
-        def forward(self, x):
-            assert isinstance(x, torch.Tensor)
-            
-            out = self.classifier(x)
-            return out
+    def forward(self, x):
+        assert isinstance(x, torch.Tensor)
+        
+        out = self.classifier(x)
+        return out
