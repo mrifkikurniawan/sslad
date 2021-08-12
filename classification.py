@@ -34,6 +34,7 @@ def main():
                         help='training GPU id')
     parser.add_argument('--config', type=str, default=None, required=True,
                         help='path to training/method yaml configuration file')
+    parser.add_argument('--comment', type=str, default='',help='comment to tensorboard logger')
     args = parser.parse_args()
 
     ######################################
@@ -45,7 +46,7 @@ def main():
     args.root = f"{args.root}/SSLAD-2D/labeled"
     config = edict(yaml.safe_load(open(args.config, "r")))
     device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id >= 0 else "cpu")
-    logger = SummaryWriter(log_dir=args.name)
+    logger = SummaryWriter(log_dir=args.name, comment=args.comment)
     seed_everything(seed)
     
     # print configuration
