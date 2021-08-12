@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from class_strategy import *
 from utils import create_instance
+from models import MLP
 
 class NaiveFinetune(object):
     def __init__(self, 
@@ -13,7 +14,7 @@ class NaiveFinetune(object):
                  ):
         
         self._model = create_instance(model)
-        self._model.fc = nn.Linear(2048, 7, bias=True)
+        self._model.fc = MLP(2048, 7)
         self._optimizer = create_instance(optimizer, params=self._model.parameters())
         self._criterion = create_instance(criterion) 
         self._plugins = self.initialize_plugins()
