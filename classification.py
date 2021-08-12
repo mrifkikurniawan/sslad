@@ -62,7 +62,7 @@ def main():
     # logging
     logger.add_hparams(args)
     hparams = edict(method=config.method)
-    logger.add_hparams(hparams)
+    logger.add_text(str(hparams))
 
     method = create_instance(config.method)
     model = method.model
