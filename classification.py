@@ -60,8 +60,6 @@ def main():
         print(f"{k}: {config.method.args[k]}")
         
     # logging
-    for k in args.keys():
-        logger.add_text(k, str(args[k]))
     hparams = edict(method=config.method)
     for k in hparams.keys():
         logger.add_text(k, str(hparams[k]))
