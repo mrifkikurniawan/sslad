@@ -48,7 +48,7 @@ class EWC(object):
                  ):
         
         self._model = create_instance(model)
-        self._model.fc = MLP(2048, 7)
+        self._model.fc = nn.Linear(2048, 7, bias=False)
         self._optimizer = create_instance(optimizer, params=self._model.parameters())
         self._criterion = create_instance(criterion) 
         self._plugins = self.initialize_plugins()
@@ -70,4 +70,4 @@ class EWC(object):
         return self._plugins
     
     def initialize_plugins(self):
-        return EWCPlugin(ewc_lambda=0.4, decay_factor=0.1, mode="separate")
+        return EWCPlugin(ewc_lambda=0.4, decay_factor=0.1, mode="online")
