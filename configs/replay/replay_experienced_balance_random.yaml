@@ -27,8 +27,4 @@ method:
         ext_mem: {}
         mem_size: 1000
         adaptive_size: True
-    
-    selection_strategy:
-      module: avalanche.training.plugins.replay
-      method: RandomExemplarsSelectionStrategy
 
