@@ -1,9 +1,10 @@
 # naive fine-tuning
 nohup python3.9 classification.py \
---name finetune \
+--name logs/finetune/finetune_wd_000005 \
 --root /home/rifki/continual_learning/datasets \
---num_workers 4 \
+--num_workers 16 \
 --store \
 --gpu_id 4 \
 --config configs/naive_finetune.yaml \
-> nohup/naive-finetune.out &
+--comment finetune_wd_000005 \
+> nohup/finetune_wd_0001.out &
