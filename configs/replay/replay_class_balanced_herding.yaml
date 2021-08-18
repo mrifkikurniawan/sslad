@@ -33,4 +33,4 @@ method:
       module: avalanche.training.plugins.replay
       method: HerdingSelectionStrategy
       args:
-        layer_name: layer4.2.relu # [avgpool, layer4.2.relu]
+        layer_name: avgpool
