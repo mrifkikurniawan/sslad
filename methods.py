@@ -2,7 +2,6 @@ from easydict import EasyDict as edict
 
 import torch.nn as nn
 from avalanche.training.plugins import EWCPlugin, ReplayPlugin
-from torchvision.models import resnet50
 
 from class_strategy import *
 from utils import create_instance
