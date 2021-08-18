@@ -1,0 +1,36 @@
+method: 
+  module: methods
+  method: Replay
+  args:
+    model:
+      module: torchvision.models
+      method: resnet50
+      args:
+        pretrained: True
+
+    optimizer:
+      module: torch.optim
+      method: SGD
+      args:
+        lr: 0.01
+    
+    criterion:
+      module: torch.nn
+      method: CrossEntropyLoss
+    
+    mem_size: 1000
+
+    storage_policy: 
+      module: avalanche.training.plugins
+      method: ClassBalancedStoragePolicy
+      args:
+        ext_mem: {}
+        mem_size: 1000
+        adaptive_size: True
+    
+    features_based: True
+    selection_strategy:
+      module: avalanche.training.plugins.replay
+      method: HerdingSelectionStrategy
+      args:
+        layer_name: avgpool
