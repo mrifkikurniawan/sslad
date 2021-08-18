@@ -2,6 +2,7 @@ from easydict import EasyDict as edict
 
 import torch.nn as nn
 from avalanche.training.plugins import EWCPlugin, ReplayPlugin
+from torchvision.models import resnet50
 
 from class_strategy import *
 from utils import create_instance
@@ -81,6 +82,7 @@ class Replay(object):
                  mem_size: int,
                  storage_policy: dict,
                  selection_strategy: dict=None,
+                 features_based: bool=False
                  ):
         
         self._model = create_instance(model)
@@ -88,7 +90,13 @@ class Replay(object):
         self._optimizer = create_instance(optimizer, params=self._model.parameters())
         self._criterion = create_instance(criterion) 
         self._mem_size = mem_size
-        self._selection_strategy = create_instance(selection_strategy) if not selection_strategy is None else None
+        
+        # if features based exemplar strategy
+        # feeding model and its layername for features extractor
+        if features_based:
+            self._selection_strategy = create_instance(selection_strategy, model=self._model) if not selection_strategy is None else None
+        else:    
+            self._selection_strategy = create_instance(selection_strategy) if not selection_strategy is None else None
         
         # create storage policy with selection strategy if pre-defined
         if self._selection_strategy:
