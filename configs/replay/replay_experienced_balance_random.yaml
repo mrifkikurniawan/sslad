@@ -29,6 +29,6 @@ method:
         adaptive_size: True
     
     selection_strategy:
-      module: avalanche.training.plugins
+      module: avalanche.training.plugins.replay
       method: RandomExemplarsSelectionStrategy
 
