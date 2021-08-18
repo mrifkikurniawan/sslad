@@ -87,7 +87,6 @@ class Replay(object):
         self._model.fc = nn.Linear(2048, 7, bias=False)
         self._optimizer = create_instance(optimizer, params=self._model.parameters())
         self._criterion = create_instance(criterion) 
-        self._plugins = self.initialize_plugins()
         self._mem_size = mem_size
         self._selection_strategy = create_instance(selection_strategy) if not selection_strategy is None else None
         
@@ -102,6 +101,8 @@ class Replay(object):
         else:
             print(f"Selection strategy: None")
             self._storage_policy = create_instance(storage_policy)
+            
+        self._plugins = self.initialize_plugins()
     
     @property
     def model(self):
