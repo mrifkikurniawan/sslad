@@ -94,13 +94,16 @@ class Replay(object):
         if self._selection_strategy:
             try:
                 self._storage_policy = create_instance(storage_policy, selection_strategy=self._selection_strategy)
+                self._storage_policy.ext_mem = dict()
                 print(f"selection strategy: {self._selection_strategy}")
             except:
                 self._storage_policy = create_instance(storage_policy)
+                self._storage_policy.ext_mem = dict()
                 print(f"Selection strategy: None")
         else:
             print(f"Selection strategy: None")
             self._storage_policy = create_instance(storage_policy)
+            self._storage_policy.ext_mem = dict()
             
         self._plugins = self.initialize_plugins()
     
