@@ -1,10 +1,9 @@
-# naive fine-tuning
 nohup python3.9 classification.py \
---name logs/finetune/finetune_wd_000005 \
+--name logs/replay/replay_class_balanced_random \
 --root /home/rifki/continual_learning/datasets \
 --num_workers 16 \
 --store \
 --gpu_id 4 \
---config configs/naive_finetune.yaml \
---comment finetune_wd_000005 \
-> nohup/finetune_wd_0001.out &
+--config configs/replay/replay_class_balanced_random.yaml \
+--comment replay_class_balanced_random \
+> nohup/replay.out &
