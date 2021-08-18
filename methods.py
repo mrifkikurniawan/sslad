@@ -80,7 +80,7 @@ class Replay(object):
                  criterion: edict,
                  mem_size: int,
                  storage_policy: dict,
-                 selection_strategy: dict,
+                 selection_strategy: dict=None,
                  ):
         
         self._model = create_instance(model)
