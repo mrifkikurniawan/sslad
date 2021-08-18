@@ -13,6 +13,7 @@ method:
       method: SGD
       args:
         lr: 0.01
+        weight_decay: 0.001
     
     criterion:
       module: torch.nn
