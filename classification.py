@@ -70,7 +70,7 @@ def main():
 
     optimizer = method.optimizer
     criterion = method.criterion
-    batch_size = 64
+    batch_size = 10
 
     # Add any additional plugins to be used by Avalanche to this list. A template
     # is provided in class_strategy.py.
@@ -82,8 +82,8 @@ def main():
     #                                    #
     ######################################
 
-    #if batch_size > 10:
-    #    raise ValueError(f"Batch size {batch_size} not allowed, should be less than or equal to 10")
+    if batch_size > 10:
+       raise ValueError(f"Batch size {batch_size} not allowed, should be less than or equal to 10")
 
     img_size = 64
     train_sets = create_train_set(args.root, img_size)
