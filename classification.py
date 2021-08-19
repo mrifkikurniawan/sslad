@@ -9,6 +9,7 @@ from avalanche.evaluation.metrics import accuracy_metrics, loss_metrics, class_a
 from avalanche.logging import TextLogger, InteractiveLogger
 from avalanche.training.plugins import EvaluationPlugin
 from avalanche.training.strategies import Naive
+from avalanche.benchmarks.utils import AvalancheConcatDataset
 
 from class_strategy import *
 from classification_util import *
@@ -72,7 +73,7 @@ def main():
 
     optimizer = method.optimizer
     criterion = method.criterion
-    batch_size = 10
+    batch_size = 128
 
     # Add any additional plugins to be used by Avalanche to this list. A template
     # is provided in class_strategy.py.
@@ -84,11 +85,11 @@ def main():
     #                                    #
     ######################################
 
-    if batch_size > 10:
-       raise ValueError(f"Batch size {batch_size} not allowed, should be less than or equal to 10")
+    # if batch_size > 10:
+    #    raise ValueError(f"Batch size {batch_size} not allowed, should be less than or equal to 10")
 
     img_size = 64
-    train_sets = create_train_set(args.root, img_size)
+    train_sets = AvalancheConcatDataset(create_train_set(args.root, img_size))
     evaluate = 'test' if args.test else 'val'
     if evaluate == "val":
         test_sets = create_val_set(args.root, img_size)
