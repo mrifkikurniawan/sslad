@@ -1,10 +1,25 @@
 import os.path
+import pickle
 
 from avalanche.benchmarks.utils import AvalancheDataset
 
 import haitain_classification as hc
 from avalanche.evaluation import Metric, GenericPluginMetric
 
+
+def create_test_set_from_pkl(root, avalanche=True):
+    file_names = os.listdir(os.path.join(root, 'test_track3A'))
+    file_names = sorted(file_names, key=lambda x: int(x[0:2]))
+    test_sets = []
+    for file in file_names:
+        with open(os.path.join(root, 'test_track3A', file), 'rb') as f:
+            ds = pickle.load(f)
+            ds = hc.HaitainObjectTestSet(None, ds.samples)
+            test_sets.append(ds)
+    if avalanche:
+        test_sets = [AvalancheDataset(ts) for ts in test_sets]
+
+    return test_sets, None
 
 def create_val_set(root, img_size, avalanche=True):
     def val_match_fn_1(obj, img_dic, obj_dic):

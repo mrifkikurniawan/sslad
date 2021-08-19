@@ -35,6 +35,8 @@ def main():
     parser.add_argument('--config', type=str, default=None, required=True,
                         help='path to training/method yaml configuration file')
     parser.add_argument('--comment', type=str, default='',help='comment to tensorboard logger')
+    parser.add_argument('--store_model', action='store_true',
+                        help="Stores model if specified. Has no effect is store is not set")
     args = parser.parse_args()
 
     ######################################
@@ -91,7 +93,7 @@ def main():
     if evaluate == "val":
         test_sets = create_val_set(args.root, img_size)
     else:
-        test_sets, test_sets_keys = create_test_set(args.root, img_size)
+        test_sets, _ = create_test_set_from_pkl(args.root, img_size)
 
     benchmark = create_multi_dataset_generic_benchmark(train_datasets=train_sets, test_datasets=test_sets)
 
@@ -128,6 +130,9 @@ def main():
 
     logger.add_scalar("Average mean test accuracy", sum(accuracies_test) / len(accuracies_test) * 100)
     logger.add_scalar("Final mean test accuracy", accuracies_test[-1] * 100)
+    
+    if args.store_model:
+        torch.save(model.state_dict(), f'./{args.name}.pt')
     
 if __name__ == '__main__':
     main()

@@ -92,8 +92,9 @@ class HaitainObjectSet(torch.utils.data.Dataset):
         img = Image.open(os.path.join(self.root, self.split, file_name)).convert('RGB')
         yb, ye, xb, xe = _rescale_bbox(self.obj_annot[obj_id]['bbox'])
         img = img.crop((xb, yb, xe, ye))
-        img = img.resize((self.img_size, self.img_size))
-        x = self.transform(img)
+        x = img.resize((self.img_size, self.img_size))
+        if self.transform is not None:
+            x = self.transform(x)
         y = self.obj_annot[obj_id]['category_id']
         return x, y
 
@@ -129,6 +130,21 @@ class HaitainObjectSet(torch.utils.data.Dataset):
         order = np.lexsort((sequence_ids, video_ids, time_stamps))
         self.samples = [self.samples[i] for i in order]
 
+class HaitainObjectTestSet(torch.utils.data.Dataset):
+
+    def __init__(self, object_set: HaitainObjectSet, samples=None):
+        if samples is None:
+            self.samples = [sample[0] for sample in object_set]
+        else:
+            self.samples = samples
+        self.targets = [0 for _ in range(len(self.samples))] # Dummy targets
+
+    def __getitem__(self, item):
+        return self.samples[item].contiguous(), self.targets[item]
+
+    def __len__(self):
+        return len(self.samples)
+    
 
 def _rescale_bbox(bbox):
     x, y, w, h = bbox
