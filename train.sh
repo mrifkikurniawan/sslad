@@ -5,4 +5,5 @@ python3.9 classification.py \
 --store \
 --gpu_id 4 \
 --config configs/replay/replay_class_balanced_closest2center.yaml \
---comment replay_class_balanced_closest2center
+--comment replay_class_balanced_closest2center \
+--store_model
