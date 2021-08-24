@@ -1,7 +1,7 @@
 from easydict import EasyDict as edict
 
 import torch.nn as nn
-from avalanche.training.plugins import EWCPlugin, ReplayPlugin
+from avalanche.training.plugins import EWCPlugin, ReplayPlugin, SynapticIntelligencePlugin
 
 from class_strategy import *
 from utils import create_instance
@@ -132,3 +132,41 @@ class Replay(object):
     
     def initialize_plugins(self):
         return ReplayPlugin(self._mem_size, self._storage_policy)
+    
+    
+class SynapticIntelligence(object):
+    def __init__(self, 
+                 model: edict,
+                 optimizer: edict,
+                 criterion: edict,
+                 si_lambda: float,
+                 excluded_parameters: str="fc"
+                 ):
+        
+        self._model = create_instance(model)
+        self._model.fc = nn.Linear(2048, 7, bias=False)
+        self._optimizer = create_instance(optimizer, params=self._model.parameters())
+        self._criterion = create_instance(criterion) 
+        self._plugins = self.initialize_plugins()
+        self._si_lambda = si_lambda
+        self._excluded_parameters = excluded_parameters
+    
+    @property
+    def model(self):
+        return self._model
+    
+    @property
+    def optimizer(self):
+        return self._optimizer
+    
+    @property
+    def criterion(self):
+        return self._criterion
+    
+    @property
+    def plugins(self):
+        return self._plugins
+    
+    def initialize_plugins(self):
+        return ClassStrategyPlugin(SynapticIntelligencePlugin(si_lambda=self._si_lambda, 
+                                                              excluded_parameters=self._excluded_parameters))
