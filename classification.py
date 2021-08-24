@@ -95,7 +95,7 @@ def main():
     else:
         test_sets, _ = create_test_set_from_pkl(args.root, img_size)
 
-    benchmark = create_multi_dataset_generic_benchmark(train_datasets=[train_sets], test_datasets=test_sets)
+    benchmark = create_multi_dataset_generic_benchmark(train_datasets=train_sets, test_datasets=test_sets)
 
     text_logger = TextLogger(open(f"./{args.name}.log", 'w'))
     interactive_logger = InteractiveLogger()
