@@ -88,7 +88,7 @@ def main():
     # if batch_size > 10:
     #    raise ValueError(f"Batch size {batch_size} not allowed, should be less than or equal to 10")
 
-    img_size = 128
+    img_size = 64
     train_sets = AvalancheConcatDataset(create_train_set(args.root, img_size))
     evaluate = 'test' if args.test else 'val'
     if evaluate == "val":
