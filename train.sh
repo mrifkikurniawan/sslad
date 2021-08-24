@@ -1,5 +1,5 @@
 python3.9 classification.py \
---name logs/finetune_iid/naive_finetune_iid_bs128 \
+--name logs/finetune_iid/naive_finetune_iid \
 --root /home/rifki/continual_learning/datasets \
 --num_workers 16 \
 --store \
