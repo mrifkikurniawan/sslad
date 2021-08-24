@@ -147,9 +147,9 @@ class SynapticIntelligence(object):
         self._model.fc = nn.Linear(2048, 7, bias=False)
         self._optimizer = create_instance(optimizer, params=self._model.parameters())
         self._criterion = create_instance(criterion) 
-        self._plugins = self.initialize_plugins()
         self._si_lambda = si_lambda
         self._excluded_parameters = excluded_parameters
+        self._plugins = self.initialize_plugins()
     
     @property
     def model(self):
