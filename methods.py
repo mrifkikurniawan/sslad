@@ -168,5 +168,5 @@ class SynapticIntelligence(object):
         return self._plugins
     
     def initialize_plugins(self):
-        return ClassStrategyPlugin(SynapticIntelligencePlugin(si_lambda=self._si_lambda, 
-                                                              excluded_parameters=self._excluded_parameters))
+        return SynapticIntelligencePlugin(si_lambda=self._si_lambda, 
+                                          excluded_parameters=self._excluded_parameters)
