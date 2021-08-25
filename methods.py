@@ -1,7 +1,7 @@
 from easydict import EasyDict as edict
 
 import torch.nn as nn
-from avalanche.training.plugins import EWCPlugin, ReplayPlugin, SynapticIntelligencePlugin
+from avalanche.training.plugins import EWCPlugin, ReplayPlugin, SynapticIntelligencePlugin, AGEMPlugin
 
 from class_strategy import *
 from utils import create_instance
@@ -170,3 +170,38 @@ class SynapticIntelligence(object):
     def initialize_plugins(self):
         return SynapticIntelligencePlugin(si_lambda=self._si_lambda, 
                                           excluded_parameters=self._excluded_parameters)
+        
+
+class AGEM(object):
+    def __init__(self, 
+                 model: edict,
+                 optimizer: edict,
+                 criterion: edict,
+                 **kwargs
+                 ):
+        
+        self._model = create_instance(model)
+        self._model.fc = nn.Linear(2048, 7, bias=False)
+        self._optimizer = create_instance(optimizer, params=self._model.parameters())
+        self._criterion = create_instance(criterion) 
+        self._kwargs = kwargs
+        self._plugins = self.initialize_plugins()
+    
+    @property
+    def model(self):
+        return self._model
+    
+    @property
+    def optimizer(self):
+        return self._optimizer
+    
+    @property
+    def criterion(self):
+        return self._criterion
+    
+    @property
+    def plugins(self):
+        return self._plugins
+    
+    def initialize_plugins(self):
+        return AGEMPlugin(**self._kwargs)

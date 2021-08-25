@@ -1,0 +1,21 @@
+method: 
+  module: methods
+  method: AGEM
+  args:
+    model:
+      module: torchvision.models
+      method: resnet50
+      args:
+        pretrained: True
+
+    optimizer:
+      module: torch.optim
+      method: SGD
+      args:
+        lr: 0.01
+    
+    criterion:
+      module: torch.nn
+      method: CrossEntropyLoss
+    patterns_per_experience: 166
+    sample_size: 16
