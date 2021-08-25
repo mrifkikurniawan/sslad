@@ -17,4 +17,4 @@ method:
     criterion:
       module: torch.nn
       method: CrossEntropyLoss
-    si_lambda: 0.4
+    si_lambda: 0.6
