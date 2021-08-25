@@ -19,4 +19,4 @@ method:
       method: CrossEntropyLoss
     mem_size: 1000
     n_classes: 7
-    p_size: 2048 
+    p_size: 7 
