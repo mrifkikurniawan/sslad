@@ -1,6 +1,8 @@
 from typing import Dict, List
 from copy import deepcopy
 
+from autoaugment import RandAugment
+
 import torch.nn as nn
 from torch.utils.data import random_split, DataLoader
 import torchvision.transforms as transforms
