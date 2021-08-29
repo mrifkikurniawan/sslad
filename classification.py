@@ -72,7 +72,7 @@ def main():
 
     optimizer = method.optimizer
     criterion = method.criterion
-    batch_size = 8
+    batch_size = 10
 
     # Add any additional plugins to be used by Avalanche to this list. A template
     # is provided in class_strategy.py.
