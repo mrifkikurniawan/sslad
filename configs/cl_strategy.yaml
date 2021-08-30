@@ -3,8 +3,8 @@ method:
   method: CLStrategy
   args:
     model:
-      module: torchvision.models
-      method: resnet50
+      module: timm.models
+      method: efficientnet_b4
       args:
         pretrained: True
 
