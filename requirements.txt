@@ -5,3 +5,4 @@ PyYAML>=5.4.1
 easydict>=1.9
 git+https://github.com/ContinualAI/avalanche.git
 randaugment>=1.0.2
+timm
