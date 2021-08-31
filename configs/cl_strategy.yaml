@@ -3,8 +3,8 @@ method:
   method: CLStrategy
   args:
     model:
-      module: timm.models
-      method: efficientnet_b4
+      module: torchvision.models
+      method: resnet50
       args:
         pretrained: True
 
@@ -27,6 +27,6 @@ method:
         "transforms.RandomHorizontalFlip()",
         "transforms.RandomRotation(10)",
         "transforms.ColorJitter(brightness=0.5, hue=0.5, saturation=0.5)",
-        "RandAugment()"
+        "RandAugment()",
         "transforms.ToTensor()",
         "transforms.Normalize((0.3252, 0.3283, 0.3407), (0.0265, 0.0241, 0.0252))"]
