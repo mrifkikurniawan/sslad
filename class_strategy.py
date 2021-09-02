@@ -1,10 +1,13 @@
-from typing import Dict, List
+from typing import Dict, List, Sequence
 from copy import deepcopy
+import types
 
 from randaugment import RandAugment
+import pandas as pd
 
+import torch
 import torch.nn as nn
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import random_split, DataLoader, Subset
 import torchvision.transforms as transforms
 
 from avalanche.training.plugins.strategy_plugin import StrategyPlugin
@@ -12,6 +15,8 @@ from avalanche.benchmarks.utils.data_loader import ReplayDataLoader
 from avalanche.benchmarks.utils import AvalancheConcatDataset, AvalancheDataset
 from avalanche.training.plugins import StoragePolicy
 from avalanche.training.strategies import BaseStrategy
+
+from utils import create_instance
 
 """
 A strategy pulgin can change the strategy parameters before and after 
@@ -50,13 +55,18 @@ class ClassStrategyPlugin(StrategyPlugin):
     def __init__(self, 
                  mem_size: int = 1000, 
                  memory_transforms: List[Dict] = None,
+                 sampler: str="random_split",
                  fast_dev_run: bool=False):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
+        if sampler == "rm":
+            self.sampler = RMSampler()
+        elif sampler == "random_split": 
+            self.sampler = sampler
         self.ext_mem = dict()
         self.mem_transform = transforms.Compose([eval(transform) for transform in memory_transforms])
-        self.storage_policy = MyStoragePolicty(self.ext_mem, self.mem_transform, self.mem_size)
+        self.storage_policy = MyStoragePolicty(self.ext_mem, self.mem_transform, self.mem_size, sampler=self.sampler)
         self.fast_dev_run = fast_dev_run
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
@@ -161,15 +171,21 @@ class MyStoragePolicty(StoragePolicy):
     def __init__(self,
                  ext_mem: dict,
                  transform: callable=None,
+                 sampler: callable=random_split,
                  mem_size: int=1000):
         super().__init__(ext_mem, mem_size)
         
         self.transform = transform
+        self.sampler = sampler
         
-    def subsample_single(self, dataset: AvalancheDataset, num_samples: int, model: nn.Module):
+    def subsample_single(self, dataset: AvalancheDataset, num_samples: int, **kwargs):
         removed_els = len(dataset) - num_samples
         if removed_els > 0:
-            data, _ = random_split(dataset, [num_samples, removed_els])
+            if isinstance(self.sampler, types.FunctionType):
+                if self.sampler.__name__ == "random_split":
+                    data, _ = self.sampler(dataset, [num_samples, removed_els], **kwargs)
+            else:
+                data = self.sampler(dataset, num_samples, **kwargs)
         return data
             
     def subsample_all_groups(self, new_size, **kwargs):
@@ -201,9 +217,109 @@ class MyStoragePolicty(StoragePolicy):
         new_group_size = past_group_size + (self.mem_size % num_exps)
         
         self.subsample_all_groups(past_group_size * (num_exps - 1), model=model)
-        current_dataset = self.subsample_single(current_dataset, new_group_size, model)
+        current_dataset = self.subsample_single(current_dataset, new_group_size, model, **kwargs)
         self.ext_mem[strategy.training_exp_counter + 1] = current_dataset
         
         # buffer size should always equal self.mem_size
         len_tot = sum(len(el) for el in self.ext_mem.values())
         assert len_tot == self.mem_size
+        
+
+class RMSampler(object):
+    def __init__(self, 
+                 augmentation: str="vr_randaug",
+                 batch_size: int=32,
+                 num_workers: int=32,
+                 num_classes: int=7):
+        
+        self.augmentation = augmentation
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.num_classes = num_classes
+    
+    def __call__(self, dataset: AvalancheDataset, num_samples: int, model: nn.Module) -> Subset:
+        uncertainy_score_per_sample = self._montecarlo(dataset, model)
+        selected_samples_indices = list()
+        sample_df = pd.DataFrame(uncertainy_score_per_sample)
+        mem_per_cls = num_samples // self.num_classes
+        num_residual = num_samples % self.num_classes
+        
+        for i in range(self.num_classes):
+            cls_df = sample_df[sample_df["label"] == i]
+            len_cls_df = len(cls_df)
+            if len_cls_df <= mem_per_cls:
+                selected_samples_indices += list(cls_df.index)
+            else:
+                uncertain_samples = cls_df.sort_values(by="uncertainty")[::mem_per_cls + num_residual]
+                selected_samples_indices += list(uncertain_samples.index)
+                num_residual = 0
+        
+        assert len(selected_samples_indices) == num_samples
+        
+        return Subset(dataset, indices=selected_samples_indices)
+    
+    def _init_augmentation(self) -> List[callable]:
+        transform_cands = list()
+        if self.augmentation == "vr_randaug":
+            for _ in range(12):
+                transform_cands.append(RandAugment())
+        
+        return transform_cands         
+
+    def _montecarlo(self, dataset: AvalancheDataset, model: nn.Module) -> List[Dict]:
+        # initialize list of augmenters
+        augmentation_module = self._init_augmentation()
+        n_transforms = len(augmentation_module)
+        uncertainty_scores_per_augment = dict()
+        uncertainy_score_per_sample = list()
+        
+        # inference on each single augmenter to obtain uncertainty score per augmenter
+        for idx, tr in enumerate(augmentation_module):
+            _tr = transforms.Compose([tr] + self.test_transform.transforms)
+            uncert_name = f"uncert_{str(idx)}"
+            uncertainty_scores_per_augment[uncert_name], labels = self._compute_uncert(dataset, _tr, model=model)
+        
+        len_samples = len(dataset)
+        for i in range(len_samples):
+            score = dict(label=labels[i])
+            for uncert_name in uncertainty_scores_per_augment:
+                unc_scores_sample_i = uncertainty_scores_per_augment[uncert_name][i]
+                score[uncert_name] = unc_scores_sample_i
+            uncertainy_score_per_sample.append(score)
+        
+        for i in range(len_samples):
+            sample = uncertainy_score_per_sample[i]
+            self._variance_ratio(sample, n_transforms)  
+            
+        return uncertainy_score_per_sample
+        
+    def _compute_uncert(self, dataset: AvalancheDataset, transforms: List[callable], model: nn.Module) -> List[torch.Tensor]:
+        batch_size = self.batch_size
+        infer_dataset = deepcopy(dataset)
+        uncertainty_scores = list()
+        labels = list()
+        infer_dataset._dataset._dataset.transform = transforms
+        dataloader = DataLoader(infer_dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
+        
+        model.eval()
+        with torch.no_grad():
+            for _, mbatch in enumerate(dataloader):
+                x, y, _ = mbatch
+                x = x.type_as(model)
+                logit = self.model(x)
+                logit = logit.detach().cpu()
+
+                for i, cert_value in enumerate(logit):
+                    uncertainty_value = 1 - cert_value
+                    uncertainty_scores.append(uncertainty_value)
+                    labels.append(y[i].item())
+
+        return uncertainty_scores, labels
+
+    def _variance_ratio(self, sample, cand_length):
+        vote_counter = torch.zeros(sample["uncert_0"].size(0))
+        for i in range(cand_length):
+            top_class = int(torch.argmin(sample[f"uncert_{i}"]))  # uncert argmin.
+            vote_counter[top_class] += 1
+        assert vote_counter.sum() == cand_length
+        sample["uncertainty"] = (1 - vote_counter.max() / cand_length).item()
