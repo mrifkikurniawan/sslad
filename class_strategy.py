@@ -327,7 +327,7 @@ class RMSampler(object):
         
         # inference on each single augmenter to obtain uncertainty score per augmenter
         for idx, tr in enumerate(augmentation_module):
-            _tr = transforms.Compose([tr] + self.test_transform.transforms)
+            _tr = transforms.Compose([tr] + [transforms.ToTensor(), transforms.Normalize((0.3252, 0.3283, 0.3407), (0.0265, 0.0241, 0.0252))])
             uncert_name = f"uncert_{str(idx)}"
             uncertainty_scores_per_augment[uncert_name], labels = self._compute_uncert(dataset, _tr, model=model)
         
