@@ -68,7 +68,7 @@ class ClassStrategyPlugin(StrategyPlugin):
             self.sampler = sampler
         self.ext_mem = dict()
         self.mem_transform = transforms.Compose([eval(transform) for transform in memory_transforms])
-        self.storage_policy = MyStoragePolicty(self.ext_mem, self.mem_transform, self.mem_size, sampler=self.sampler)
+        self.storage_policy = MyStoragePolicty(self.ext_mem, self.mem_transform, self.sampler, self.mem_size)
         self.fast_dev_run = fast_dev_run
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
