@@ -356,15 +356,14 @@ class RMSampler(object):
 
         uncertainty_scores = list()
         labels = list()
-        infer_dataset._dataset._dataset.transform = transforms
-        dataloader = DataLoader(infer_dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
         
         model.eval()
         with torch.no_grad():
-            for _, mbatch in enumerate(dataloader):
+            for _, mbatch in tqdm(enumerate(dataloader), desc=f"measure uncertainty"):
                 x, y, _ = mbatch
-                x = x.type_as(model)
-                logit = self.model(x)
+                x = x.type_as(next(model.parameters()))
+                logit = model(x)
                 logit = logit.detach().cpu()
 
                 for i, cert_value in enumerate(logit):
