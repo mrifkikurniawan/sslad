@@ -219,7 +219,7 @@ class MyStoragePolicty(StoragePolicy):
         new_group_size = past_group_size + (self.mem_size % num_exps)
         
         self.subsample_all_groups(past_group_size * (num_exps - 1), model=model)
-        current_dataset = self.subsample_single(current_dataset, new_group_size, model, **kwargs)
+        current_dataset = self.subsample_single(current_dataset, new_group_size, model=model)
         self.ext_mem[strategy.training_exp_counter + 1] = current_dataset
         
         # buffer size should always equal self.mem_size
