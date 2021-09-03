@@ -347,7 +347,13 @@ class RMSampler(object):
         
     def _compute_uncert(self, dataset: AvalancheDataset, transforms: List[callable], model: nn.Module) -> List[torch.Tensor]:
         batch_size = self.batch_size
-        infer_dataset = deepcopy(dataset)
+        if isinstance(dataset, AvalancheDataset):
+            original_transform = dataset._dataset._dataset.transform
+            dataset._dataset._dataset.transform = transforms
+        elif isinstance(dataset, Subset):
+            original_transform = dataset.dataset._dataset._dataset.transform
+            dataset.dataset._dataset._dataset.transform = transforms
+
         uncertainty_scores = list()
         labels = list()
         infer_dataset._dataset._dataset.transform = transforms
@@ -366,6 +372,11 @@ class RMSampler(object):
                     uncertainty_scores.append(uncertainty_value)
                     labels.append(y[i].item())
 
+        if isinstance(dataset, AvalancheDataset):
+            dataset._dataset._dataset.transform = original_transform
+        elif isinstance(dataset, Subset):
+            dataset.dataset._dataset._dataset.transform = original_transform
+            
         return uncertainty_scores, labels
 
     def _variance_ratio(self, sample, cand_length):
