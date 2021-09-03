@@ -239,10 +239,26 @@ class RMSampler(object):
         self.num_workers = num_workers
         self.num_classes = num_classes
     
-    def __call__(self, dataset: AvalancheDataset, num_samples: int, model: nn.Module) -> Subset:
+    def __call__(self, dataset: Union[AvalancheDataset, Subset], num_samples: int, model: nn.Module) -> Subset:
         uncertainy_score_per_sample = self._montecarlo(dataset, model)
         selected_samples_indices = list()
         sample_df = pd.DataFrame(uncertainy_score_per_sample)
+        
+        selected_samples_indices = self._select_indices(sample_df=sample_df, num_samples=num_samples)
+        
+        print("num samples:", num_samples)
+        print("Len selected samples:", len(selected_samples_indices))
+        assert len(selected_samples_indices) == num_samples
+       
+        if isinstance(dataset, Subset):
+            dataset.indices = np.array(dataset.indices).take(selected_samples_indices).tolist()
+            return dataset
+        elif isinstance(dataset, AvalancheDataset):
+            return Subset(dataset, indices=selected_samples_indices)
+
+    def _select_indices(self, sample_df: pd.DataFrame, num_samples: int) -> List[int]:
+        index_tracker = {i:0 for i in range(self.num_classes)}
+        selected_samples_indices = list()
         mem_per_cls = num_samples // self.num_classes
         num_residual = num_samples % self.num_classes
         
