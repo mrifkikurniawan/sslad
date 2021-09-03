@@ -241,7 +241,6 @@ class RMSampler(object):
     
     def __call__(self, dataset: Union[AvalancheDataset, Subset], num_samples: int, model: nn.Module) -> Subset:
         uncertainy_score_per_sample = self._montecarlo(dataset, model)
-        selected_samples_indices = list()
         sample_df = pd.DataFrame(uncertainy_score_per_sample)
         
         selected_samples_indices = self._select_indices(sample_df=sample_df, num_samples=num_samples)
