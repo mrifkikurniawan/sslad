@@ -261,6 +261,7 @@ class RMSampler(object):
         selected_samples_indices = list()
         mem_per_cls = num_samples // self.num_classes
         num_residual = num_samples % self.num_classes
+        occupation_counter = num_samples
         
         for i in range(self.num_classes):
             cls_df = sample_df[sample_df["label"] == i]
