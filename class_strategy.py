@@ -267,15 +267,48 @@ class RMSampler(object):
             cls_df = sample_df[sample_df["label"] == i]
             len_cls_df = len(cls_df)
             if len_cls_df <= mem_per_cls:
-                selected_samples_indices += list(cls_df.index)
+                indices = cls_df.index.tolist()
+                selected_samples_indices += indices
+                occupation_counter -= len(indices)
+                index_tracker[i] = len(indices)
+                
+                # recounting the memory per class
+                mem_per_cls = occupation_counter // self.num_classes - (i+1)
+                num_residual = occupation_counter % self.num_classes - (i+1)
             else:
-                uncertain_samples = cls_df.sort_values(by="uncertainty")[::mem_per_cls + num_residual]
-                selected_samples_indices += list(uncertain_samples.index)
-                num_residual = 0
+                uncertain_samples = cls_df.sort_values(by="uncertainty", ascending=False)
+                if mem_per_cls + num_residual <= len(uncertain_samples):
+                    indices = uncertain_samples.index[0:mem_per_cls + num_residual].tolist()
+                    num_residual = 0
+                else:
+                    indices = uncertain_samples.index[0:mem_per_cls].tolist()
+                selected_samples_indices += indices
+                occupation_counter -= len(indices)  
+                index_tracker[i] = len(indices)          
         
-        assert len(selected_samples_indices) == num_samples
-        
-        return Subset(dataset, indices=selected_samples_indices)
+        while len(selected_samples_indices) < num_samples:
+            class_distribution = np.zeros(self.num_classes)
+            for i in range(self.num_classes):
+                cls_df = sample_df[sample_df["label"] == i] 
+                class_distribution[i] = len(cls_df)
+            mem_per_cls = np.round(occupation_counter * class_distribution/class_distribution.sum()).astype(int)
+            num_residual = occupation_counter - np.sum(mem_per_cls) 
+            cls_max = np.argmax(class_distribution)
+            mem_per_cls[cls_max] = mem_per_cls[cls_max] + num_residual
+            assert np.sum(mem_per_cls) == occupation_counter, f"{np.sum(mem_per_cls)}, {occupation_counter}"
+            
+            for i in range(self.num_classes):
+                cls_df = sample_df[sample_df["label"] == i]            
+                last_idx = index_tracker[i]
+                uncertain_samples = cls_df.sort_values(by="uncertainty", ascending=False).index[last_idx:].tolist()
+                if len(uncertain_samples) == 0:
+                    indices = cls_df.sort_values(by="uncertainty", ascending=False).index[0:mem_per_cls[i]].tolist()
+                else:
+                    indices = uncertain_samples[0:mem_per_cls[i]]
+                selected_samples_indices += indices
+                occupation_counter -= len(indices)
+
+        return selected_samples_indices
     
     def _init_augmentation(self) -> List[callable]:
         transform_cands = list()
