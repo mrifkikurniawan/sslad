@@ -61,11 +61,12 @@ class ClassStrategyPlugin(StrategyPlugin):
                  fast_dev_run: bool=False):
         super(ClassStrategyPlugin).__init__()
         
+        sampler_to_module = {"rm": RMSampler(),
+                             "random_split": random_split,
+                             "uncertainty": UncertaintySampler()}
+        
         self.mem_size = mem_size
-        if sampler == "rm":
-            self.sampler = RMSampler()
-        elif sampler == "random_split": 
-            self.sampler = sampler
+        self.sampler = sampler_to_module[sampler]
         self.ext_mem = dict()
         self.mem_transform = transforms.Compose([eval(transform) for transform in memory_transforms])
         self.storage_policy = MyStoragePolicty(self.ext_mem, self.mem_transform, self.sampler, self.mem_size)
@@ -336,3 +337,140 @@ class RMSampler(object):
             vote_counter[top_class] += 1
         assert vote_counter.sum() == cand_length
         sample["uncertainty"] = (1 - vote_counter.max() / cand_length).item()
+        
+
+
+class UncertaintySampler(object):
+    def __init__(self, 
+                 augmentation: str="vr_randaug",
+                 batch_size: int=32,
+                 num_workers: int=32,
+                 num_classes: int=7):
+        
+        self.augmentation = augmentation
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.num_classes = num_classes
+        self.scoring = entropy
+    
+    def __call__(self, dataset: Union[AvalancheDataset, Subset], num_samples: int, model: nn.Module) -> Subset:
+        uncertainy_score_per_sample = self._montecarlo(dataset, model)
+        sample_df = pd.DataFrame(uncertainy_score_per_sample)
+        
+        selected_samples_indices = self._select_indices(sample_df=sample_df, num_samples=num_samples)
+        
+        print("num samples:", num_samples)
+        print("Len selected samples:", len(selected_samples_indices))
+        assert len(selected_samples_indices) == num_samples
+       
+        if isinstance(dataset, Subset):
+            dataset.indices = np.array(dataset.indices).take(selected_samples_indices).tolist()
+            return dataset
+        elif isinstance(dataset, AvalancheDataset):
+            return Subset(dataset, indices=selected_samples_indices)
+
+    def _select_indices(self, sample_df: pd.DataFrame, num_samples: int) -> List[int]:
+        uncertain_samples = sample_df.sort_values(by="uncertainty", ascending=False)
+        selected_samples_indices = uncertain_samples.index[0:num_samples].tolist()
+
+        return selected_samples_indices
+    
+    def _init_augmentation(self) -> List[callable]:
+        transform_cands = list()
+        if self.augmentation == "vr_randaug":
+            for _ in range(12):
+                transform_cands.append(RandAugment())
+        
+        return transform_cands         
+
+    def _montecarlo(self, dataset: AvalancheDataset, model: nn.Module) -> List[Dict]:
+        # initialize list of augmenters
+        augmentation_module = self._init_augmentation()
+        n_transforms = len(augmentation_module)
+        uncertainty_scores_per_augment = dict()
+        uncertainy_score_per_sample = list()
+        
+        # inference on each single augmenter to obtain uncertainty score per augmenter
+        for idx, tr in enumerate(augmentation_module):
+            _tr = transforms.Compose([tr] + [transforms.ToTensor(), transforms.Normalize((0.3252, 0.3283, 0.3407), (0.0265, 0.0241, 0.0252))])
+            uncert_name = f"uncert_{str(idx)}"
+            uncertainty_scores_per_augment[uncert_name], labels = self._compute_uncert(dataset, _tr, model=model)
+        
+        len_samples = len(dataset)
+        for i in range(len_samples):
+            score = dict(label=labels[i])
+            for uncert_name in uncertainty_scores_per_augment:
+                unc_scores_sample_i = uncertainty_scores_per_augment[uncert_name][i]
+                score[uncert_name] = unc_scores_sample_i
+            uncertainy_score_per_sample.append(score)
+        
+        for i in range(len_samples):
+            sample = uncertainy_score_per_sample[i]
+            self._aggregate(sample, n_transforms)  
+            
+        return uncertainy_score_per_sample
+        
+    def _compute_uncert(self, dataset: AvalancheDataset, transforms: List[callable], model: nn.Module) -> List[torch.Tensor]:
+        batch_size = self.batch_size
+        if isinstance(dataset, AvalancheDataset):
+            original_transform = dataset._dataset._dataset.transform
+            dataset._dataset._dataset.transform = transforms
+        elif isinstance(dataset, Subset):
+            original_transform = dataset.dataset._dataset._dataset.transform
+            dataset.dataset._dataset._dataset.transform = transforms
+
+        uncertainty_scores = list()
+        labels = list()
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
+        
+        model.eval()
+        with torch.no_grad():
+            for _, mbatch in tqdm(enumerate(dataloader), desc=f"measure uncertainty"):
+                x, y, _ = mbatch
+                x = x.type_as(next(model.parameters()))
+                logit = model(x)
+                logit = logit.detach().cpu()
+
+                for i, cert_value in enumerate(logit):
+                    uncertainty_value = self.scoring(cert_value)
+                    uncertainty_scores.append(uncertainty_value)
+                    labels.append(y[i].item())
+
+        if isinstance(dataset, AvalancheDataset):
+            dataset._dataset._dataset.transform = original_transform
+        elif isinstance(dataset, Subset):
+            dataset.dataset._dataset._dataset.transform = original_transform
+            
+        return uncertainty_scores, labels
+
+    def _aggregate(self, sample, cand_length):
+        uncertainty_aggregate = torch.zeros(cand_length)
+        for i in range(cand_length):
+            uncertainty_aggregate[i] = sample[f"uncert_{str(i)}"]
+        sample["uncertainty"] = torch.mean(uncertainty_aggregate)
+        
+
+def margin_conf(logit: torch.Tensor):
+    proba_dist = nn.functional.softmax(logit, dim=0)
+    sorted_proba_dist, _ = torch.sort(proba_dist, descending=True)
+    most_conf = sorted_proba_dist[0]
+    next_most_conf = sorted_proba_dist[1]
+    uncertainty_score = 1 - (most_conf - next_most_conf)
+    
+    return uncertainty_score
+
+def least_conf(logit: torch.Tensor):
+    proba_dist = nn.functional.softmax(logit, dim=0)
+    n_class = len(proba_dist)
+    sorted_proba_dist, _ = torch.sort(proba_dist, descending=True)
+    most_conf = sorted_proba_dist[0]
+    uncertainty_score = (1 - most_conf) * n_class / (n_class - 1)
+    
+    return uncertainty_score
+
+def entropy(logit: torch.Tensor):
+    proba_dist = nn.functional.softmax(logit, dim=0)
+    log_probs = torch.log(proba_dist)
+    uncertainty_score = (proba_dist * -log_probs).sum()
+    
+    return uncertainty_score
