@@ -18,7 +18,7 @@ from avalanche.benchmarks.utils import AvalancheConcatDataset, AvalancheDataset
 from avalanche.training.plugins import StoragePolicy
 from avalanche.training.strategies import BaseStrategy
 
-from utils import create_instance
+from utils import create_instance, cutmix_data
 
 """
 A strategy pulgin can change the strategy parameters before and after 
@@ -58,6 +58,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                  mem_size: int = 1000, 
                  memory_transforms: List[Dict] = None,
                  sampler: str="random_split",
+                 cut_mix: bool=True,
                  fast_dev_run: bool=False):
         super(ClassStrategyPlugin).__init__()
         
@@ -67,6 +68,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         self.mem_size = mem_size
         self.sampler = sampler_to_module[sampler]
+        self.cut_mix = cut_mix
         self.ext_mem = dict()
         self.mem_transform = transforms.Compose([eval(transform) for transform in memory_transforms])
         self.storage_policy = MyStoragePolicty(self.ext_mem, self.mem_transform, self.sampler, self.mem_size)
@@ -109,13 +111,21 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
-        pass
+        self.do_cutmix = self.cut_mix and np.random.rand(1) < 0.5
+        if self.do_cutmix:
+            strategy.mb_x, strategy.mb_y, labels_b, lambd = cutmix_data(x=strategy.mb_x, y=strategy.mb_y, alpha=1.0)
+            self.cutmix_out = dict(labels_b=labels_b,
+                                   lambd=lambd)
 
     def after_forward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
     def before_backward(self, strategy: 'BaseStrategy', **kwargs):
-        pass
+        if self.do_cutmix:
+            lambd = self.cutmix_out['lambd']
+            labels_b = self.cutmix_out['labels_b']
+            strategy.loss *= lambd
+            strategy.loss += (1 - lambd) * strategy.criterion(strategy.mb_output, labels_b)
 
     def after_backward(self, strategy: 'BaseStrategy', **kwargs):
         pass
