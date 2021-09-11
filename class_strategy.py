@@ -111,21 +111,23 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
-        self.do_cutmix = self.cut_mix and np.random.rand(1) < 0.5
-        if self.do_cutmix:
-            strategy.mb_x, strategy.mb_y, labels_b, lambd = cutmix_data(x=strategy.mb_x, y=strategy.mb_y, alpha=1.0)
-            self.cutmix_out = dict(labels_b=labels_b,
-                                   lambd=lambd)
+        if self.cut_mix:
+            self.do_cutmix = self.cut_mix and np.random.rand(1) < 0.5
+            if self.do_cutmix:
+                strategy.mbatch[0], strategy.mbatch[1], labels_b, lambd = cutmix_data(x=strategy.mb_x, y=strategy.mb_y, alpha=0.25)
+                self.cutmix_out = dict(labels_b=labels_b,
+                                       lambd=lambd)
 
     def after_forward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
     def before_backward(self, strategy: 'BaseStrategy', **kwargs):
-        if self.do_cutmix:
-            lambd = self.cutmix_out['lambd']
-            labels_b = self.cutmix_out['labels_b']
-            strategy.loss *= lambd
-            strategy.loss += (1 - lambd) * strategy.criterion(strategy.mb_output, labels_b)
+        if self.cut_mix:
+            if self.do_cutmix:
+                lambd = self.cutmix_out['lambd']
+                labels_b = self.cutmix_out['labels_b']
+                strategy.loss *= lambd
+                strategy.loss += (1 - lambd) * strategy._criterion(strategy.mb_output, labels_b)
 
     def after_backward(self, strategy: 'BaseStrategy', **kwargs):
         pass
