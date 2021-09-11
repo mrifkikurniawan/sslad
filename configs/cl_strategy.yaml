@@ -29,5 +29,6 @@ method:
         "transforms.ColorJitter(brightness=0.5, hue=0.5)",
         "transforms.ToTensor()",
         "transforms.Normalize((0.3252, 0.3283, 0.3407), (0.0265, 0.0241, 0.0252))"]
-        sampler: uncertainty
+        sampler: rm
+        cut_mix: False
 
