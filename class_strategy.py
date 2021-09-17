@@ -118,6 +118,7 @@ class ClassStrategyPlugin(StrategyPlugin):
             
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
         if self.memory_dataloader:
+            try:
             x_memory, y_memory = self.memory_dataloader.next()
             x_memory = x_memory.type_as(strategy.mb_x)
             y_memory = y_memory.type_as(strategy.mb_y)
