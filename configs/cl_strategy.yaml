@@ -23,12 +23,30 @@ method:
       method: ClassStrategyPlugin
       args: 
         mem_size: 1000
+        sweep_memory_every_n_iter: 1000
+        memory_sweep_default_size: 500
+        cut_mix: False
         memory_transforms: [
         "transforms.RandomHorizontalFlip()",
         "transforms.RandomRotation(10)",
         "transforms.ColorJitter(brightness=0.5, hue=0.5)",
         "transforms.ToTensor()",
         "transforms.Normalize((0.3252, 0.3283, 0.3407), (0.0265, 0.0241, 0.0252))"]
-        sampler: rm
-        cut_mix: False
 
+        # online sampler
+        online_sampler: 
+          module: modules
+          method: UncertaintySampler
+          args:
+            num_workers: 10
+            scoring_method: entropy
+            negative_mining: True
+          
+        # periodic sampler
+        periodic_sampler:
+          module: modules
+          method: RMSampler
+          args:
+            augmentation: vr_randaug
+            batch_size: 32
+            num_workers: 10
