@@ -50,7 +50,7 @@ class MemoryDataset(Dataset):
         self._targets += targets
     
     def get_labels(self):
-        return self.targets
+        return [int(target) for target in self.targets]
     
     def __len__(self):
         return len(self.targets)
