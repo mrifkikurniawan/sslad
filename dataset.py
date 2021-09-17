@@ -13,7 +13,7 @@ class MemoryDataset(Dataset):
     def __init__(self, 
                  inputs: list, 
                  targets: list, 
-                 transform: list=_default_transform, 
+                 transform: callable=None, 
                  target_transform: list=None):
         
         if isinstance(inputs[0], torch.Tensor):
