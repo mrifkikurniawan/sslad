@@ -6,8 +6,6 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 
-_default_transform = [torchvision.transforms.ToTensor(), 
-                      torchvision.transforms.Normalize((0.3252, 0.3283, 0.3407), (0.0265, 0.0241, 0.0252))]
 _default_inverse_transform = torchvision.Compose([torchvision.transforms.Normalize((-0.3252/0.0265, -0.3283/0.0241, -0.3407/0.0252), (1/0.0265, 1/0.0241, 1/0.0252)), 
                                                   torchvision.transforms.ToPILImage()])
 
@@ -15,7 +13,7 @@ class MemoryDataset(Dataset):
     def __init__(self, 
                  inputs: list, 
                  targets: list, 
-                 transform: callable=None, 
+                 transform: list=_default_transform, 
                  target_transform: list=None):
         
         if isinstance(inputs[0], torch.Tensor):
