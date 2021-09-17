@@ -124,6 +124,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                 y_memory = y_memory.type_as(strategy.mb_y)
                 strategy.mbatch[0] = torch.cat([strategy.mb_x, x_memory], dim=0)
                 strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
+            except:
+                pass
         
         # cut mix augmentation if necessary
         if self.cut_mix:
