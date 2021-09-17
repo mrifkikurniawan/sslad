@@ -110,7 +110,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         # having some memory, then join the current batch with the small batch of memory            
         if self.storage.current_capacity == self.memory_sweep_default_size:
             self.memory_dataloader = iter(DataLoader(self.storage.dataset, 
-                                                     batch_size=self.num_samples_per_batch, 
+                                                     batch_size=6, 
                                                      shuffle=False,
                                                      num_workers=self.online_sampler.num_workers,
                                                      sampler=ImbalancedDatasetSampler(self.storage.dataset)))
