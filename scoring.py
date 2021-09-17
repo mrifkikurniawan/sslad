@@ -48,7 +48,8 @@ def entropy(proba_dist: torch.Tensor):
     return uncertainty_score
 
 def negative_scoring(proba_dist: torch.Tensor, y: torch.Tensor):
+    score = 0.5
     _, preds = torch.max(proba_dist, dim=1)
     incorrect_preds = preds != y
     
-    return incorrect_preds.type(torch.float16)    return incorrect_preds.type(torch.float16) * score
+    return incorrect_preds.type(torch.float16) * score
