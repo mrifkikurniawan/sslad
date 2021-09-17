@@ -51,4 +51,4 @@ def negative_scoring(proba_dist: torch.Tensor, y: torch.Tensor):
     _, preds = torch.max(proba_dist, dim=1)
     incorrect_preds = preds != y
     
-    return incorrect_preds.type(torch.float16)
+    return incorrect_preds.type(torch.float16)    return incorrect_preds.type(torch.float16) * score
