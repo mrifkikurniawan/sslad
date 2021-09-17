@@ -72,9 +72,11 @@ class OnlineCLStorage(object):
         assert self.current_capacity <= self.mem_size, \
             f"Memory size is over capacity, max size is {self.mem_size} while current capacity is {self.current_capacity}"
 
-    def online_update_memory(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module, **kwargs):
+    def online_update_memory(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module, num_samples, **kwargs):
         """ Update memory with new experience. """
-        num_samples = self.mem_size - self.current_capacity
+        remain_capacity = self.mem_size - self.current_capacity
+        if num_samples > remain_capacity:
+            num_samples = remain_capacity
         
         if self.current_capacity == self.mem_size:
             print(f"Current memory capacity is maximum, remove some within periodic_update_memory")
@@ -108,7 +110,12 @@ class RMSampler(object):
         self.batch_size = batch_size
         self.num_workers = num_workers
     
-    def __call__(self, dataset: Dataset, num_samples: int, model: nn.Module) -> List[PIL.Image]:
+    def __call__(self, dataset: Dataset, num_samples: int, model: nn.Module) -> Image:
+        
+        if num_samples > len(dataset):
+            selected_images = [img for img in dataset.inputs]
+            selected_targets = [target for target in dataset.targets]
+            return  selected_images, selected_targets
         
         uncertainy_score_per_sample = self._montecarlo(dataset, model)
         sample_df = pd.DataFrame(uncertainy_score_per_sample)
@@ -176,7 +183,10 @@ class RMSampler(object):
         model.eval()
         with torch.no_grad():
             for _, mbatch in tqdm(enumerate(dataloader), desc=f"measure uncertainty"):
-                x, y, _ = mbatch
+                try:
+                    x, y, _ = mbatch
+                except:
+                    x, y = mbatch
                 x = x.type_as(next(model.parameters()))
                 logit = model(x)
                 logit = logit.detach().cpu()
@@ -212,6 +222,12 @@ class UncertaintySampler(object):
         self.negative_mining = negative_mining
     
     def __call__(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module, num_samples: int,) -> List[torch.Tensor]:
+        len_inputs = x.shape[0]
+        if num_samples > len_inputs:
+            selected_images = [x_ for x_ in x]
+            selected_targets = [y_ for y_ in y]
+            return selected_images, selected_targets
+        
         samples_scores = self._compute_score(x, y, model)        
         selected_samples_indices = self._select_indices(samples_scores, num_samples=num_samples)
         
@@ -219,8 +235,8 @@ class UncertaintySampler(object):
         selected_images, selected_targets = x[selected_samples_indices], y[selected_samples_indices]
         
         # convert batch tensor to list of tensor
-        selected_images = [x for x in selected_images]
-        selected_targets = [y for y in selected_targets]
+        selected_images = [x.detach().cpu() for x in selected_images]
+        selected_targets = [y.detach().cpu() for y in selected_targets]
         
         return selected_images, selected_targets
 
@@ -230,25 +246,20 @@ class UncertaintySampler(object):
         return selected_samples_indices        
 
     def _compute_score(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module) -> List[Dict]:
-        dataset = TensorDataset(x, y)
-        dataloader = DataLoader(dataset, 10, shuffle=False, num_workers=self.num_workers)
         
         # inference to get uncertainty scores
         # given latest updated model
         model.eval()
         with torch.no_grad():
-            for _, mbatch in enumerate(dataloader):
-                x, y = mbatch
-                x = x.type_as(next(model.parameters()))
-                logit = model(x)
-                proba_dist = nn.functional.softmax(logit, dim=1)
+            logit = model(x)
+            proba_dist = nn.functional.softmax(logit, dim=1)
 
-                # computing sampling scores based on uncertainty 
-                # and negative mining if necessary
-                samples_scores = self.scoring(proba_dist)
-                if self.negative_mining:
-                    negative_scores = negative_scoring(proba_dist, y)
-                    samples_scores += negative_scores
+            # computing sampling scores based on uncertainty 
+            # and negative mining if necessary
+            samples_scores = self.scoring(proba_dist)
+            if self.negative_mining:
+                negative_scores = scoring.negative_scoring(proba_dist, y)
+                samples_scores += negative_scores
         
         return samples_scores        
                 
