@@ -77,7 +77,8 @@ class OnlineCLStorage(object):
         num_samples = self.mem_size - self.current_capacity
         
         if self.current_capacity == self.mem_size:
-            self.periodic_update_memory(x=x, y=y, model=model, **kwargs)
+            print(f"Current memory capacity is maximum, remove some within periodic_update_memory")
+            pass
         elif self.current_capacity <= self.mem_size:
             inputs_samples, targets_samples = self.online_sampler(x=x, y=y, model=model, 
                                                                   num_samples=num_samples, **kwargs)
