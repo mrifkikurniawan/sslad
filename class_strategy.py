@@ -119,11 +119,11 @@ class ClassStrategyPlugin(StrategyPlugin):
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
         if self.memory_dataloader:
             try:
-            x_memory, y_memory = self.memory_dataloader.next()
-            x_memory = x_memory.type_as(strategy.mb_x)
-            y_memory = y_memory.type_as(strategy.mb_y)
-            strategy.mbatch[0] = torch.cat([strategy.mb_x, x_memory], dim=0)
-            strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
+                x_memory, y_memory = self.memory_dataloader.next()
+                x_memory = x_memory.type_as(strategy.mb_x)
+                y_memory = y_memory.type_as(strategy.mb_y)
+                strategy.mbatch[0] = torch.cat([strategy.mb_x, x_memory], dim=0)
+                strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
         
         # cut mix augmentation if necessary
         if self.cut_mix:
