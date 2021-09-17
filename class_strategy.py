@@ -64,20 +64,22 @@ class ClassStrategyPlugin(StrategyPlugin):
                  memory_transforms: List[Dict] = None,
                  sweep_memory_every_n_iter: int=1000, 
                  memory_sweep_default_size: int=500,
+                 num_samples_per_batch: int=5,
                  cut_mix: bool=True):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
         self.current_itaration = 0
-        self.ext_mem = dict()
         self.sweep_memory_every_n_iter = sweep_memory_every_n_iter
         self.memory_sweep_default_size = memory_sweep_default_size
+        self.num_samples_per_batch = num_samples_per_batch
         
         self.mem_transform = transforms.Compose([eval(transform) for transform in memory_transforms])
         self.online_sampler = create_instance(online_sampler)
         self.periodic_sampler = create_instance(periodic_sampler)
-        self.storage = OnlineCLStorage(self.ext_mem, self.mem_transform, self.online_sampler, 
+        self.storage = OnlineCLStorage(self.mem_transform, self.online_sampler, 
                                        self.periodic_sampler, self.mem_size)
+        self.memory_dataloader = None
         
         # augmentations
         self.cut_mix = cut_mix
@@ -103,9 +105,21 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def before_training_iteration(self, strategy: 'BaseStrategy', **kwargs):
-        pass
-
+        
+        # having some memory, then join the current batch with the small batch of memory            
+        if self.storage.current_capacity == self.memory_sweep_default_size:
+            self.memory_dataloader = iter(DataLoader(self.storage.dataset, 
+                                                     batch_size=self.num_samples_per_batch, shuffle=True,
+                                                     num_workers=self.online_sampler.num_workers))
+            
+            
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
+        if self.memory_dataloader:
+            x_memory, y_memory = self.memory_dataloader.next()
+            x_memory = x_memory.type_as(strategy.mb_x)
+            y_memory = y_memory.type_as(strategy.mb_y)
+            strategy.mbatch[0] = torch.cat([strategy.mb_x, x_memory], dim=0)
+            strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
         
         # cut mix augmentation if necessary
         if self.cut_mix:
@@ -144,14 +158,18 @@ class ClassStrategyPlugin(StrategyPlugin):
         x, y = strategy.mb_x, strategy.mb_y
         
         # online episodic memory update
-        self.storage.online_update_memory(x, y, model)
+        self.storage.online_update_memory(x, y, model, self.num_samples_per_batch)
         
         # periodic episodic memory update
-        if self.current_itaration == self.sweep_memory_every_n_iter or \
-            self.storage.current_capacity == self.mem_size:
-                print(f"Periodic episodic memory update, sweep up some memories")
-                num_samples = self.memory_sweep_default_size
-                self.storage.periodic_update_memory(x, y, model, num_samples)
+        if self.current_itaration > 0:
+            if self.current_itaration % self.sweep_memory_every_n_iter == 0 or \
+                self.storage.current_capacity == self.mem_size:
+                    x, y = x.detach().cpu(), y.detach().cpu()
+                    print(f"----- Periodic episodic memory update, sweep up some memories -----")
+                    print(f"Current training steps: {self.current_itaration}")
+                    print(f"Current storage capacity: {self.storage.current_capacity}")
+                    num_samples = self.memory_sweep_default_size
+                    self.storage.periodic_update_memory(x, y, model, num_samples)
             
         
         self.current_itaration += 1
@@ -160,7 +178,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def after_training_exp(self, strategy: 'BaseStrategy', **kwargs):
-        self.storage_policy(strategy, **kwargs)
+        pass
 
     def after_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
