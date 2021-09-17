@@ -49,6 +49,12 @@ class MemoryDataset(Dataset):
         self._inputs += inputs
         self._targets += targets
     
+    def get_labels(self):
+        return self.targets
+    
+    def __len__(self):
+        return len(self.targets)
+    
     def __getitem__(self, index):
         inputs = self._inputs[index]
         targets = self._targets[index]
