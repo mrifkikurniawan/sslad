@@ -25,6 +25,7 @@ method:
         mem_size: 1000
         sweep_memory_every_n_iter: 1000
         memory_sweep_default_size: 500
+        num_samples_per_batch: 5
         cut_mix: False
         memory_transforms: [
         "transforms.RandomHorizontalFlip()",
