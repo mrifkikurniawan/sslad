@@ -66,7 +66,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                  sweep_memory_every_n_iter: int=1000, 
                  memory_sweep_default_size: int=500,
                  num_samples_per_batch: int=5,
-                 cut_mix: bool=True):
+                 cut_mix: bool=True,
+                 lr_scheduler: torch.optim.lr_scheduler=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -75,6 +76,10 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.memory_sweep_default_size = memory_sweep_default_size
         self.num_samples_per_batch = num_samples_per_batch
         
+        # lr scheduler
+        self.lr_scheduler = lr_scheduler
+        
+        # episodic memory
         self.mem_transform = transforms.Compose([eval(transform) for transform in memory_transforms])
         self.online_sampler = create_instance(online_sampler)
         self.periodic_sampler = create_instance(periodic_sampler)
@@ -177,6 +182,10 @@ class ClassStrategyPlugin(StrategyPlugin):
                     num_samples = self.memory_sweep_default_size
                     self.storage.periodic_update_memory(x, y, model, num_samples)
             
+        
+        # learning rate scheduler step()
+        if self.lr_scheduler:
+            self.lr_scheduler.step()
         
         self.current_itaration += 1
 
