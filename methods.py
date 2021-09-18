@@ -13,13 +13,13 @@ class CLStrategy(object):
                  optimizer: edict,
                  criterion: edict,
                  plugins: edict,
-                 lr_schedule: edict,
+                 lr_scheduler: edict,
                  ):
         
         self._model = create_instance(model)
         self._model.fc = nn.Linear(2048, 7, bias=False)
         self._optimizer = create_instance(optimizer, params=self._model.parameters())
-        self._lr_scheduler = create_instance(lr_schedule, optimizer=self._optimizer)
+        self._lr_scheduler = create_instance(lr_scheduler, optimizer=self._optimizer)
         self._criterion = create_instance(criterion) 
         self._plugins = create_instance(plugins, lr_scheduler=self._lr_scheduler)
     
