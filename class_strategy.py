@@ -185,7 +185,10 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # learning rate scheduler step()
         if self.lr_scheduler:
-            self.lr_scheduler.step()
+            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                self.lr_scheduler.step(strategy.loss.item())
+            else:
+                self.lr_scheduler.step()
         
         self.current_itaration += 1
 
