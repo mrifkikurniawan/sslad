@@ -22,9 +22,8 @@ method:
       module: torch.optim.lr_scheduler
       method: MultiStepLR
       args: 
-        milestones: [2000, 4000]
+        milestones : [1000, 2000]
         gamma: 0.1
-        verbose: True
 
     plugins:
       module: class_strategy
