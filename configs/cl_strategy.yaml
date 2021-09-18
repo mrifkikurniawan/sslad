@@ -17,6 +17,14 @@ method:
     criterion:
       module: torch.nn
       method: CrossEntropyLoss
+    
+    lr_scheduler:
+      module: torch.optim.lr_scheduler
+      method: MultiStepLR
+      args: 
+        milestones: [2000, 4000]
+        gamma: 0.1
+        verbose: True
 
     plugins:
       module: class_strategy
