@@ -67,7 +67,10 @@ class ClassStrategyPlugin(StrategyPlugin):
                  memory_sweep_default_size: int=500,
                  num_samples_per_batch: int=5,
                  cut_mix: bool=True,
-                 lr_scheduler: torch.optim.lr_scheduler=None):
+                 lr_scheduler: torch.optim.lr_scheduler=None,
+                 temperature: float=0.5,
+                 loss_weights: dict=None,
+                 softlabels_patience: int=1000):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -89,17 +92,6 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # augmentations
         self.cut_mix = cut_mix
-
-        # -------- Soft Labels --------
-        self.softlabels_patience = softlabels_patience
-        self.softlabels_learning = False
-        # softmax temperature
-        self.temperature = temperature
-        self.softmaxt = SoftmaxT(temperature=self.temperature)
-        
-        # losses weights
-        self.kldiv_loss = KLDivLoss(temperature=self.temperature)
-        self.loss_weights = loss_weights
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
