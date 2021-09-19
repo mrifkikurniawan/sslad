@@ -23,6 +23,7 @@ from avalanche.training.strategies import BaseStrategy
 
 from utils import create_instance, cutmix_data
 from modules import *
+from loss import *
 
 """
 A strategy pulgin can change the strategy parameters before and after 
@@ -88,10 +89,22 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.periodic_sampler = create_instance(periodic_sampler)
         self.storage = OnlineCLStorage(self.mem_transform, self.online_sampler, 
                                        self.periodic_sampler, self.mem_size)
-        self.memory_dataloader = None
+        self.memory_dataloader = False
+        self.ep_memory_batch_size = 6
         
         # augmentations
         self.cut_mix = cut_mix
+        
+        # -------- Soft Labels --------
+        self.softlabels_patience = softlabels_patience
+        self.softlabels_learning = False
+        # softmax temperature
+        self.temperature = temperature
+        self.softmaxt = SoftmaxT(temperature=self.temperature)
+        
+        # losses weights
+        self.kldiv_loss = KLDivLoss(temperature=self.temperature)
+        self.loss_weights = loss_weights
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -118,7 +131,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         # having some memory, then join the current batch with the small batch of memory            
         if self.storage.current_capacity == self.memory_sweep_default_size:
             self.memory_dataloader = iter(DataLoader(self.storage.dataset, 
-                                                     batch_size=6, 
+                                                     batch_size=self.ep_memory_batch_size, 
                                                      shuffle=False,
                                                      num_workers=self.online_sampler.num_workers,
                                                      sampler=ImbalancedDatasetSampler(self.storage.dataset)))
@@ -127,9 +140,9 @@ class ClassStrategyPlugin(StrategyPlugin):
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
         if self.memory_dataloader:
             try:
-                x_memory, y_memory = self.memory_dataloader.next()
+                x_memory, self.y_memory = self.memory_dataloader.next()
                 x_memory = x_memory.type_as(strategy.mb_x)
-                y_memory = y_memory.type_as(strategy.mb_y)
+                y_memory = self.y_memory['label'].type_as(strategy.mb_y)
                 strategy.mbatch[0] = torch.cat([strategy.mb_x, x_memory], dim=0)
                 strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
             except:
@@ -155,7 +168,16 @@ class ClassStrategyPlugin(StrategyPlugin):
                 labels_b = self.cutmix_out['labels_b']
                 strategy.loss *= lambd
                 strategy.loss += (1 - lambd) * strategy._criterion(strategy.mb_output, labels_b)
+                
+        # soft labels learning
+        if self.softlabels_learning and self.memory_dataloader:
+            logits = self.mb_output[-self.ep_memory_batch_size:]
+            softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
+            kl_loss = self.kldiv_loss(logits=logits, y=softlabels)
 
+            strategy.loss *= torch.tensor(self.loss_weights['cross_entropy']).type_as(strategy.loss)
+            strategy.loss += torch.tensor(self.loss_weights['kl_divergence']).type_as(strategy.loss) * kl_loss
+            
     def after_backward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
@@ -184,7 +206,21 @@ class ClassStrategyPlugin(StrategyPlugin):
                     print(f"Current storage capacity: {self.storage.current_capacity}")
                     num_samples = self.memory_sweep_default_size
                     self.storage.periodic_update_memory(x, y, model, num_samples)
-            
+                    
+                    # update logits for softlabels learning
+                    dataloader = DataLoader(self.storage.dataset, 
+                                            batch_size=self.periodic_sampler.batch_size,
+                                            shuffle=False,
+                                            num_workers=self.periodic_sampler.num_workers)
+                    logits_container = list()
+                    for x, y in dataloader:
+                        logits = model(x)     
+                        for i in range(logits.shape[0]):
+                            logits_container.append(logits[i].detach().cpu())
+                    
+                    # updating the memory logits
+                    for i in range(self.storage.current_capacity):
+                        self.storage.targets[i].update(dict(logit=logits_container[i]))
         
         # learning rate scheduler step()
         if self.lr_scheduler:
@@ -194,6 +230,9 @@ class ClassStrategyPlugin(StrategyPlugin):
                 self.lr_scheduler.step()
         
         self.current_itaration += 1
+        if self.current_itaration >= self.softlabels_patience:
+            self.softlabels_learning = True
+            print("------- Starting softlabels learning -------")
 
     def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -208,9 +247,6 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def before_eval_dataset_adaptation(self, strategy: 'BaseStrategy',
-        if self.current_itaration >= self.softlabels_patience:
-            self.softlabels_learning = True
-            print("------- Starting softlabels learning -------")
                                        **kwargs):
         pass
 
