@@ -34,6 +34,8 @@ method:
         memory_sweep_default_size: 500
         num_samples_per_batch: 5
         cut_mix: False
+        temperature: 0.5
+        softlabels_patience: 1000
         memory_transforms: [
         "transforms.RandomHorizontalFlip()",
         "transforms.RandomRotation(10)",
@@ -58,3 +60,7 @@ method:
             augmentation: vr_randaug
             batch_size: 32
             num_workers: 10
+        
+        loss_weights: 
+          cross_entropy: 1.0
+          kl_divergence: 0.5
