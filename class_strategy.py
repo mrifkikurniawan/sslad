@@ -185,6 +185,20 @@ class ClassStrategyPlugin(StrategyPlugin):
                     num_samples = self.memory_sweep_default_size
                     self.storage.periodic_update_memory(x, y, model, num_samples)
             
+                    # update logits for softlabels learning
+                    dataloader = DataLoader(self.storage.dataset, 
+                                            batch_size=self.periodic_sampler.batch_size,
+                                            shuffle=False,
+                                            num_workers=self.periodic_sampler.num_workers)
+                    logits_container = list()
+                    for x, y in dataloader:
+                        logits = model(x)     
+                        for i in range(logits.shape[0]):
+                            logits_container.append(logits[i].detach().cpu())
+                    
+                    # updating the memory logits
+                    for i in range(self.storage.current_capacity):
+                        self.storage.targets[i].update(dict(logit=logits_container[i]))
         
         # learning rate scheduler step()
         if self.lr_scheduler:
@@ -194,9 +208,6 @@ class ClassStrategyPlugin(StrategyPlugin):
                 self.lr_scheduler.step()
         
         self.current_itaration += 1
-        if self.current_itaration >= self.softlabels_patience:
-            self.softlabels_learning = True
-            print("------- Starting softlabels learning -------")
 
     def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
         pass
