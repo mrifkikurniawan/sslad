@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset, TensorDataset, Dataset
 import torchvision.transforms as transforms
+from torch.nn import functional as F
 
 from avalanche.training.plugins.strategy_plugin import StrategyPlugin
 from avalanche.benchmarks.utils.data_loader import ReplayDataLoader
@@ -114,7 +115,7 @@ class RMSampler(object):
         
         if num_samples > len(dataset):
             selected_images = [img for img in dataset.inputs]
-            selected_targets = [target for target in dataset.targets]
+            selected_targets = [dict(label=target) for target in dataset.targets]
             return  selected_images, selected_targets
         
         uncertainy_score_per_sample = self._montecarlo(dataset, model)
@@ -125,7 +126,7 @@ class RMSampler(object):
         
         # storage the tensor samples to list
         selected_images = [dataset.inputs[idx] for idx in selected_samples_indices]
-        selected_targets = [dataset.targets[idx] for idx in selected_samples_indices]
+        selected_targets = [dict(label=dataset.targets[idx]) for idx in selected_samples_indices]
         
         return selected_images, selected_targets
        
@@ -194,7 +195,7 @@ class RMSampler(object):
                 for i, cert_value in enumerate(logit):
                     uncertainty_value = 1 - cert_value
                     uncertainty_scores.append(uncertainty_value)
-                    labels.append(y[i].item())
+                    labels.append(y['label'][i].item())
 
         # return back the original transform
         dataset.transform = original_dataset_transform
@@ -225,18 +226,19 @@ class UncertaintySampler(object):
         len_inputs = x.shape[0]
         if num_samples > len_inputs:
             selected_images = [x_ for x_ in x]
-            selected_targets = [y_ for y_ in y]
+            selected_targets = [dict(label=y_) for y_ in y]
             return selected_images, selected_targets
         
-        samples_scores = self._compute_score(x, y, model)        
+        samples_scores, logits = self._compute_score(x, y, model)        
         selected_samples_indices = self._select_indices(samples_scores, num_samples=num_samples)
         
         assert len(selected_samples_indices) == num_samples
-        selected_images, selected_targets = x[selected_samples_indices], y[selected_samples_indices]
+        selected_images, selected_targets, selected_logits = x[selected_samples_indices], y[selected_samples_indices], logits[selected_samples_indices]
         
         # convert batch tensor to list of tensor
         selected_images = [x.detach().cpu() for x in selected_images]
-        selected_targets = [y.detach().cpu() for y in selected_targets]
+        selected_targets = [dict(label=selected_targets[idx].detach().cpu(), logit=selected_logits[idx].detach().cpu()) \
+                            for idx in range(selected_targets.shape[0])]
         
         return selected_images, selected_targets
 
@@ -261,7 +263,7 @@ class UncertaintySampler(object):
                 negative_scores = scoring.negative_scoring(proba_dist, y)
                 samples_scores += negative_scores
         
-        return samples_scores        
+        return samples_scores, logit      
                 
         
 
