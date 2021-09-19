@@ -92,17 +92,6 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # augmentations
         self.cut_mix = cut_mix
-        
-        # -------- Soft Labels --------
-        self.softlabels_patience = softlabels_patience
-        self.softlabels_learning = False
-        # softmax temperature
-        self.temperature = temperature
-        self.softmaxt = SoftmaxT(temperature=self.temperature)
-        
-        # losses weights
-        self.kldiv_loss = KLDivLoss(temperature=self.temperature)
-        self.loss_weights = loss_weights
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -178,6 +167,15 @@ class ClassStrategyPlugin(StrategyPlugin):
 
     def after_update(self, strategy: 'BaseStrategy', **kwargs):
         
+        # soft labels learning
+        if self.softlabels_learning and self.memory_dataloader:
+            logits = self.mb_output[-self.ep_memory_batch_size:]
+            softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
+            kl_loss = self.kldiv_loss(logits=logits, y=softlabels)
+
+            strategy.loss *= torch.tensor(self.loss_weights['cross_entropy']).type_as(strategy.loss)
+            strategy.loss += torch.tensor(self.loss_weights['kl_divergence']).type_as(strategy.loss) * kl_loss
+            
         # get model, current batch images and targets 
         model = strategy.model
         x, y = strategy.mb_x, strategy.mb_y
