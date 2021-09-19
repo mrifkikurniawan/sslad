@@ -92,6 +92,17 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # augmentations
         self.cut_mix = cut_mix
+        
+        # -------- Soft Labels --------
+        self.softlabels_patience = softlabels_patience
+        self.softlabels_learning = False
+        # softmax temperature
+        self.temperature = temperature
+        self.softmaxt = SoftmaxT(temperature=self.temperature)
+        
+        # losses weights
+        self.kldiv_loss = KLDivLoss(temperature=self.temperature)
+        self.loss_weights = loss_weights
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
