@@ -194,6 +194,9 @@ class ClassStrategyPlugin(StrategyPlugin):
                 self.lr_scheduler.step()
         
         self.current_itaration += 1
+        if self.current_itaration >= self.softlabels_patience:
+            self.softlabels_learning = True
+            print("------- Starting softlabels learning -------")
 
     def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -208,18 +211,6 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def before_eval_dataset_adaptation(self, strategy: 'BaseStrategy',
-        
-        # learning rate scheduler step()
-        if self.lr_scheduler:
-            if isinstance(self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                self.lr_scheduler.step(strategy.loss.item())
-            else:
-                self.lr_scheduler.step()
-        
-        self.current_itaration += 1
-        if self.current_itaration >= self.softlabels_patience:
-            self.softlabels_learning = True
-            print("------- Starting softlabels learning -------")
                                        **kwargs):
         pass
 
