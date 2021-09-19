@@ -156,6 +156,15 @@ class ClassStrategyPlugin(StrategyPlugin):
                 strategy.loss *= lambd
                 strategy.loss += (1 - lambd) * strategy._criterion(strategy.mb_output, labels_b)
 
+        # soft labels learning
+        if self.softlabels_learning and self.memory_dataloader:
+            logits = self.mb_output[-self.ep_memory_batch_size:]
+            softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
+            kl_loss = self.kldiv_loss(logits=logits, y=softlabels)
+
+            strategy.loss *= torch.tensor(self.loss_weights['cross_entropy']).type_as(strategy.loss)
+            strategy.loss += torch.tensor(self.loss_weights['kl_divergence']).type_as(strategy.loss) * kl_loss
+            
     def after_backward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
@@ -167,15 +176,6 @@ class ClassStrategyPlugin(StrategyPlugin):
 
     def after_update(self, strategy: 'BaseStrategy', **kwargs):
         
-        # soft labels learning
-        if self.softlabels_learning and self.memory_dataloader:
-            logits = self.mb_output[-self.ep_memory_batch_size:]
-            softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
-            kl_loss = self.kldiv_loss(logits=logits, y=softlabels)
-
-            strategy.loss *= torch.tensor(self.loss_weights['cross_entropy']).type_as(strategy.loss)
-            strategy.loss += torch.tensor(self.loss_weights['kl_divergence']).type_as(strategy.loss) * kl_loss
-            
         # get model, current batch images and targets 
         model = strategy.model
         x, y = strategy.mb_x, strategy.mb_y
