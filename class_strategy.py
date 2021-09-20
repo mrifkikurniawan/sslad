@@ -105,6 +105,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         # losses weights
         self.kldiv_loss = KLDivLoss(temperature=self.temperature)
         self.loss_weights = loss_weights
+        self.next_milestone = self.loss_weights['milestones'][0]
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -169,6 +170,26 @@ class ClassStrategyPlugin(StrategyPlugin):
                 strategy.loss *= lambd
                 strategy.loss += (1 - lambd) * strategy._criterion(strategy.mb_output, labels_b)
 
+        # soft labels learning
+        if self.softlabels_learning and self.memory_dataloader:
+            if self.current_itaration == self.next_milestone:
+                self.milestone_idx = self.loss_weights['milestones'].index(self.next_milestone)
+                self.current_milestone = self.next_milestone
+                last_milestone = self.loss_weights['milestones'][-1]
+                if self.current_milestone != last_milestone:
+                    self.next_milestone = self.loss_weights['milestones'][self.milestone_idx+1]
+                print(f"Current milestone: {self.current_milestone}")
+                print(f"CE Loss: {self.loss_weights['cross_entropy'][self.milestone_idx]}")
+                print(f"KL Loss: {self.loss_weights['kl_divergence'][self.milestone_idx]}")
+            
+            memory_batch_size = self.y_memory['logit'].shape[0]
+            logits = strategy.mb_output[-memory_batch_size:]
+            softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
+            kl_loss = self.kldiv_loss(logits=logits, y=softlabels)
+
+            strategy.loss *= torch.tensor(self.loss_weights['cross_entropy'][self.milestone_idx]).type_as(strategy.loss)
+            strategy.loss += torch.tensor(self.loss_weights['kl_divergence'][self.milestone_idx]).type_as(strategy.loss) * kl_loss
+
     def after_backward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
@@ -208,6 +229,9 @@ class ClassStrategyPlugin(StrategyPlugin):
                 self.lr_scheduler.step()
         
         self.current_itaration += 1
+        if self.current_itaration == self.softlabels_patience:
+            self.softlabels_learning = True
+            print("------- Starting softlabels learning -------")
 
     def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
         pass
