@@ -14,14 +14,23 @@ class CLStrategy(object):
                  criterion: edict,
                  plugins: edict,
                  lr_scheduler: edict,
+                 logger: edict
                  ):
         
-        self._model = create_instance(model)
+        self._model = create_instance(deepcopy(model))
         self._model.fc = nn.Linear(2048, 7, bias=False)
-        self._optimizer = create_instance(optimizer, params=self._model.parameters())
-        self._lr_scheduler = create_instance(lr_scheduler, optimizer=self._optimizer)
-        self._criterion = create_instance(criterion) 
-        self._plugins = create_instance(plugins, lr_scheduler=self._lr_scheduler)
+        self._optimizer = create_instance(deepcopy(optimizer), params=self._model.parameters())
+        self._lr_scheduler = create_instance(deepcopy(lr_scheduler), optimizer=self._optimizer)
+        self._criterion = create_instance(deepcopy(criterion)) 
+        self._logger = create_instance(logger,
+                                  config={'model': model, 
+                                          'optimizer': optimizer, 
+                                          'criterion': criterion, 
+                                          'lr_scheduler/method': lr_scheduler,
+                                          'plugins': plugins,
+                                        }
+                                  )
+        self._plugins = create_instance(plugins, lr_scheduler=self._lr_scheduler, logger=self._logger)
     
     @property
     def model(self):
@@ -39,6 +48,9 @@ class CLStrategy(object):
     def plugins(self):
         return self._plugins
     
+    @property
+    def logger(self):
+        return self._logger
 class NaiveFinetune(object):
     def __init__(self, 
                  model: edict,
