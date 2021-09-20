@@ -231,8 +231,8 @@ class UncertaintySampler(object):
     def __call__(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int,) -> List[torch.Tensor]:
         len_inputs = x.shape[0]
         if num_samples > len_inputs:
-            selected_images = [x_ for x_ in x]
-            selected_targets = [dict(label=y['label'][i], logit=y['logit'][i]) for i in range(x.shape[0])]
+            selected_images = [x_.cpu() for x_ in x]
+            selected_targets = [dict(label=y['label'][i].cpu(), logit=y['logit'][i].cpu()) for i in range(x.shape[0])]
             return selected_images, selected_targets
         
         labels = y['label']
