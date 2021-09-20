@@ -15,4 +15,4 @@ class KLDivLoss(nn.Module):
         
         y_hat = F.log_softmax(logits/self.temperature, dim=1)
         loss = F.kl_div(y_hat, y, reduction='batchmean') * (self.temperature**2)
-        return loss
+        return loss.squeeze()
