@@ -118,7 +118,7 @@ class RMSampler(object):
             selected_targets = [target for target in dataset.targets]
             return  selected_images, selected_targets
         
-        uncertainy_score_per_sample = self._montecarlo(dataset, model)
+        uncertainy_score_per_sample, outputs = self._montecarlo(dataset, model)
         sample_df = pd.DataFrame(uncertainy_score_per_sample)
         
         selected_samples_indices = self._select_indices(sample_df=sample_df, num_samples=num_samples)
@@ -127,6 +127,9 @@ class RMSampler(object):
         # storage the tensor samples to list
         selected_images = [dataset.inputs[idx] for idx in selected_samples_indices]
         selected_targets = [dataset.targets[idx] for idx in selected_samples_indices]
+        logits = outputs['logits']
+        for i, idx in enumerate(selected_samples_indices):
+            selected_targets[i]['logit'] = logits[idx]
         
         return selected_images, selected_targets
        
@@ -156,7 +159,7 @@ class RMSampler(object):
         for idx, tr in enumerate(augmentation_module):
             _tr = transforms.Compose([tr] + [transforms.ToTensor(), transforms.Normalize((0.3252, 0.3283, 0.3407), (0.0265, 0.0241, 0.0252))])
             uncert_name = f"uncert_{str(idx)}"
-            uncertainty_scores_per_augment[uncert_name], labels = self._compute_uncert(dataset, _tr, model=model)
+            uncertainty_scores_per_augment[uncert_name], labels, outputs = self._compute_uncert(dataset, _tr, model=model)
         
         len_samples = len(dataset)
         for i in range(len_samples):
@@ -170,7 +173,7 @@ class RMSampler(object):
             sample = uncertainy_score_per_sample[i]
             self._variance_ratio(sample, n_transforms)  
             
-        return uncertainy_score_per_sample
+        return uncertainy_score_per_sample, outputs
         
     def _compute_uncert(self, dataset: Dataset, transforms: List[callable], model: nn.Module) -> List[torch.Tensor]:
         batch_size = self.batch_size
@@ -179,6 +182,8 @@ class RMSampler(object):
 
         uncertainty_scores = list()
         labels = list()
+        logits = list()
+        outputs = dict()
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
         
         model.eval()
@@ -196,11 +201,12 @@ class RMSampler(object):
                     uncertainty_value = 1 - cert_value
                     uncertainty_scores.append(uncertainty_value)
                     labels.append(y['label'][i].item())
+                    logits.append(cert_value)
 
         # return back the original transform
         dataset.transform = original_dataset_transform
-            
-        return uncertainty_scores, labels
+        outputs['logits'] = logits    
+        return uncertainty_scores, labels, outputs
 
     def _variance_ratio(self, sample, cand_length):
         vote_counter = torch.zeros(sample["uncert_0"].size(0))
