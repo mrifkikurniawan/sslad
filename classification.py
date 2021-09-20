@@ -77,6 +77,7 @@ def main():
     # Add any additional plugins to be used by Avalanche to this list. A template
     # is provided in class_strategy.py.
     plugins = [method.plugins]
+    logger_ext = method.logger
 
     ######################################
     #                                    #
@@ -120,6 +121,7 @@ def main():
         results = strategy.eval(benchmark.test_stream, num_workers=args.num_workers)
         mean_acc = [r[1] for r in results['Top1_ClassAcc_Stream/eval_phase/test_stream/Task000']]
         accuracies_test.append(sum(mean_acc) / len(mean_acc))
+        logger_ext.log({"test/accuracy": sum(mean_acc) / len(mean_acc)})
 
     print(f"Average mean test accuracy: {sum(accuracies_test) / len(accuracies_test) * 100:.3f}%")
     print(f"Average mean test accuracy: {sum(accuracies_test) / len(accuracies_test) * 100:.3f}%",
@@ -130,6 +132,10 @@ def main():
 
     logger.add_scalar("Average mean test accuracy", sum(accuracies_test) / len(accuracies_test) * 100)
     logger.add_scalar("Final mean test accuracy", accuracies_test[-1] * 100)
+    
+    logger_ext.log({'test/final mean acc': sum(accuracies_test) / len(accuracies_test) * 100,
+                'test/average mean acc': accuracies_test[-1]
+                })
     
     if args.store_model:
         torch.save(model.state_dict(), f'./{args.name}.pt')
