@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union, List, Dict
 
 import torch
 import torchvision
@@ -35,11 +35,12 @@ class MemoryDataset(Dataset):
     
     def append(self, 
                inputs: Union[torch.Tensor, List[torch.Tensor]], 
-               targets: Union[torch.Tensor, List[torch.Tensor]]):
+               targets: Dict[str, torch.Tensor]):
         
-        if isinstance(inputs, torch.Tensor) or isinstance(targets, torch.Tensor):
+        if isinstance(inputs, torch.Tensor) or isinstance(targets, dict):
+            len_inputs = inputs.shape[0]
             inputs = [x for x in inputs]
-            targets = [dict(label=y) for y in targets]
+            targets = [dict(label=targets['label'][i], logit=targets['logit'][i]) for i in range(len_inputs)]
             
         # invers transform
         if isinstance(inputs[0], torch.Tensor):

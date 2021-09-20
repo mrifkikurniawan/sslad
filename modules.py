@@ -57,7 +57,7 @@ class OnlineCLStorage(object):
         else:
             return MemoryDataset(inputs=self.inputs, targets=self.targets, transform=self.transform)
             
-    def periodic_update_memory(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module, num_samples: int,  **kwargs):
+    def periodic_update_memory(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int,  **kwargs):
         
         # append new batch datapoints into dataset
         # for sampling strategy
@@ -73,7 +73,7 @@ class OnlineCLStorage(object):
         assert self.current_capacity <= self.mem_size, \
             f"Memory size is over capacity, max size is {self.mem_size} while current capacity is {self.current_capacity}"
 
-    def online_update_memory(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module, num_samples, **kwargs):
+    def online_update_memory(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples, **kwargs):
         """ Update memory with new experience. """
         remain_capacity = self.mem_size - self.current_capacity
         if num_samples > remain_capacity:
@@ -126,7 +126,7 @@ class RMSampler(object):
         
         # storage the tensor samples to list
         selected_images = [dataset.inputs[idx] for idx in selected_samples_indices]
-        selected_targets = [dict(label=dataset.targets[idx]['label']) for idx in selected_samples_indices]
+        selected_targets = [dataset.targets[idx] for idx in selected_samples_indices]
         
         return selected_images, selected_targets
        
@@ -222,22 +222,24 @@ class UncertaintySampler(object):
         self.scoring = getattr(scoring, scoring_method)
         self.negative_mining = negative_mining
     
-    def __call__(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module, num_samples: int,) -> List[torch.Tensor]:
+    def __call__(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int,) -> List[torch.Tensor]:
         len_inputs = x.shape[0]
         if num_samples > len_inputs:
             selected_images = [x_ for x_ in x]
-            selected_targets = [dict(label=y_) for y_ in y]
+            selected_targets = [dict(label=y['label'][i], logit=y['logit'][i]) for i in range(x.shape[0])]
             return selected_images, selected_targets
         
-        samples_scores = self._compute_score(x, y, model)        
+        labels = y['label']
+        samples_scores = self._compute_score(x, labels, model)        
         selected_samples_indices = self._select_indices(samples_scores, num_samples=num_samples)
         
         assert len(selected_samples_indices) == num_samples
-        selected_images, selected_targets = x[selected_samples_indices], y[selected_samples_indices]
+        selected_images = x[selected_samples_indices]
         
         # convert batch tensor to list of tensor
         selected_images = [x.cpu() for x in selected_images]
-        selected_targets = [dict(label=y.cpu()) for y in selected_targets]
+        selected_targets = [dict(label=y['label'][i].cpu(), 
+                                 logit=y['logit'][i].cpu()) for i in selected_samples_indices]
         
         return selected_images, selected_targets
 

@@ -183,20 +183,21 @@ class ClassStrategyPlugin(StrategyPlugin):
         # get model, current batch images and targets 
         model = strategy.model
         x, y = strategy.mb_x.detach(), strategy.mb_y.detach()
+        logits = strategy.mb_output.detach()
         
         # online episodic memory update
-        self.storage.online_update_memory(x, y, model, self.num_samples_per_batch)
+        self.storage.online_update_memory(x, dict(label=y, logit=logits), model, self.num_samples_per_batch)
         
         # periodic episodic memory update
         if self.current_itaration > 0:
             if self.current_itaration % self.sweep_memory_every_n_iter == 0 or \
                 self.storage.current_capacity == self.mem_size:
-                    x, y = x.detach().cpu(), y.detach().cpu()
+                    x, y, logits = x.cpu(), y.cpu(), logits.cpu()
                     print(f"----- Periodic episodic memory update, sweep up some memories -----")
                     print(f"Current training steps: {self.current_itaration}")
                     print(f"Current storage capacity: {self.storage.current_capacity}")
                     num_samples = self.memory_sweep_default_size
-                    self.storage.periodic_update_memory(x, y, model, num_samples)
+                    self.storage.periodic_update_memory(x, dict(label=y, logit=logits), model, num_samples)
             
         
         # learning rate scheduler step()
