@@ -171,7 +171,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                 
         # soft labels learning
         if self.softlabels_learning and self.memory_dataloader:
-            logits = self.mb_output[-self.ep_memory_batch_size:]
+            memory_batch_size = self.y_memory['logit'].shape[0]
+            logits = strategy.mb_output[-memory_batch_size:]
             softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
             kl_loss = self.kldiv_loss(logits=logits, y=softlabels)
 
@@ -205,7 +206,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                     print(f"Current training steps: {self.current_itaration}")
                     print(f"Current storage capacity: {self.storage.current_capacity}")
                     num_samples = self.memory_sweep_default_size
-                    self.storage.periodic_update_memory(x, y, model, num_samples)
+                    self.storage.periodic_update_memory(x, dict(label=y, logit=strategy.mb_output.detach().cpu()), model, num_samples)
                     
                     # update logits for softlabels learning
                     dataloader = DataLoader(self.storage.dataset, 
@@ -213,8 +214,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                                             shuffle=False,
                                             num_workers=self.periodic_sampler.num_workers)
                     logits_container = list()
-                    for x, y in dataloader:
-                        logits = model(x)     
+                    for x_, _ in dataloader:
+                        logits = model(x_.type_as(next(model.parameters())))     
                         for i in range(logits.shape[0]):
                             logits_container.append(logits[i].detach().cpu())
                     
@@ -230,7 +231,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                 self.lr_scheduler.step()
         
         self.current_itaration += 1
-        if self.current_itaration >= self.softlabels_patience:
+        if self.current_itaration == self.softlabels_patience:
             self.softlabels_learning = True
             print("------- Starting softlabels learning -------")
 
