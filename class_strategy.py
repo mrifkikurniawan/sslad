@@ -68,10 +68,12 @@ class ClassStrategyPlugin(StrategyPlugin):
                  memory_sweep_default_size: int=500,
                  num_samples_per_batch: int=5,
                  cut_mix: bool=True,
+                 ep_memory_batch_size: int=6,
                  lr_scheduler: torch.optim.lr_scheduler=None,
                  temperature: float=0.5,
                  loss_weights: dict=None,
-                 softlabels_patience: int=1000):
+                 softlabels_patience: int=1000,
+                 logger: object=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -90,7 +92,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.storage = OnlineCLStorage(self.mem_transform, self.online_sampler, 
                                        self.periodic_sampler, self.mem_size)
         self.memory_dataloader = False
-        self.ep_memory_batch_size = 6
+        self.ep_memory_batch_size = ep_memory_batch_size
         
         # augmentations
         self.cut_mix = cut_mix
@@ -106,6 +108,9 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.kldiv_loss = KLDivLoss(temperature=self.temperature)
         self.loss_weights = loss_weights
         self.next_milestone = self.loss_weights['milestones'][0]
+        
+        # logger
+        self.logger = logger
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -232,6 +237,9 @@ class ClassStrategyPlugin(StrategyPlugin):
         if self.current_itaration == self.softlabels_patience:
             self.softlabels_learning = True
             print("------- Starting softlabels learning -------")
+            
+        # logging
+        self.logger.log({"train/loss": strategy.loss.item()})
 
     def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
         pass
