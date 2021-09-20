@@ -140,9 +140,9 @@ class ClassStrategyPlugin(StrategyPlugin):
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
         if self.memory_dataloader:
             try:
-                x_memory, y_memory = self.memory_dataloader.next()
+                x_memory, self.y_memory = self.memory_dataloader.next()
                 x_memory = x_memory.type_as(strategy.mb_x)
-                y_memory = y_memory.type_as(strategy.mb_y)
+                y_memory = self.y_memory['label'].type_as(strategy.mb_y)
                 strategy.mbatch[0] = torch.cat([strategy.mb_x, x_memory], dim=0)
                 strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
             except:
@@ -182,7 +182,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # get model, current batch images and targets 
         model = strategy.model
-        x, y = strategy.mb_x, strategy.mb_y
+        x, y = strategy.mb_x.detach(), strategy.mb_y.detach()
         
         # online episodic memory update
         self.storage.online_update_memory(x, y, model, self.num_samples_per_batch)

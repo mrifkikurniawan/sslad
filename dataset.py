@@ -39,7 +39,7 @@ class MemoryDataset(Dataset):
         
         if isinstance(inputs, torch.Tensor) or isinstance(targets, torch.Tensor):
             inputs = [x for x in inputs]
-            targets = [y for y in targets]
+            targets = [dict(label=y) for y in targets]
             
         # invers transform
         if isinstance(inputs[0], torch.Tensor):
@@ -50,7 +50,7 @@ class MemoryDataset(Dataset):
         self._targets += targets
     
     def get_labels(self):
-        return [int(target) for target in self.targets]
+        return [int(target['label']) for target in self.targets]
     
     def __len__(self):
         return len(self.targets)

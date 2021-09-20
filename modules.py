@@ -126,7 +126,7 @@ class RMSampler(object):
         
         # storage the tensor samples to list
         selected_images = [dataset.inputs[idx] for idx in selected_samples_indices]
-        selected_targets = [dataset.targets[idx] for idx in selected_samples_indices]
+        selected_targets = [dict(label=dataset.targets[idx]['label']) for idx in selected_samples_indices]
         
         return selected_images, selected_targets
        
@@ -195,7 +195,7 @@ class RMSampler(object):
                 for i, cert_value in enumerate(logit):
                     uncertainty_value = 1 - cert_value
                     uncertainty_scores.append(uncertainty_value)
-                    labels.append(y[i].item())
+                    labels.append(y['label'][i].item())
 
         # return back the original transform
         dataset.transform = original_dataset_transform
@@ -226,7 +226,7 @@ class UncertaintySampler(object):
         len_inputs = x.shape[0]
         if num_samples > len_inputs:
             selected_images = [x_ for x_ in x]
-            selected_targets = [y_ for y_ in y]
+            selected_targets = [dict(label=y_) for y_ in y]
             return selected_images, selected_targets
         
         samples_scores = self._compute_score(x, y, model)        
@@ -236,8 +236,8 @@ class UncertaintySampler(object):
         selected_images, selected_targets = x[selected_samples_indices], y[selected_samples_indices]
         
         # convert batch tensor to list of tensor
-        selected_images = [x.detach().cpu() for x in selected_images]
-        selected_targets = [y.detach().cpu() for y in selected_targets]
+        selected_images = [x.cpu() for x in selected_images]
+        selected_targets = [dict(label=y.cpu()) for y in selected_targets]
         
         return selected_images, selected_targets
 
