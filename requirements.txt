@@ -7,3 +7,4 @@ git+https://github.com/ContinualAI/avalanche.git
 randaugment>=1.0.2
 timm
 git+https://github.com/ufoym/imbalanced-dataset-sampler.git
+wandb
