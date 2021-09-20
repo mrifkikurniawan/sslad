@@ -89,7 +89,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.periodic_sampler = create_instance(periodic_sampler)
         self.storage = OnlineCLStorage(self.mem_transform, self.online_sampler, 
                                        self.periodic_sampler, self.mem_size)
-        self.memory_dataloader = None
+        self.memory_dataloader = False
         self.ep_memory_batch_size = 6
         
         # augmentations
