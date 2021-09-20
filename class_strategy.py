@@ -23,6 +23,7 @@ from avalanche.training.strategies import BaseStrategy
 
 from utils import create_instance, cutmix_data
 from modules import *
+from loss import *
 
 """
 A strategy pulgin can change the strategy parameters before and after 
@@ -67,7 +68,10 @@ class ClassStrategyPlugin(StrategyPlugin):
                  memory_sweep_default_size: int=500,
                  num_samples_per_batch: int=5,
                  cut_mix: bool=True,
-                 lr_scheduler: torch.optim.lr_scheduler=None):
+                 lr_scheduler: torch.optim.lr_scheduler=None,
+                 temperature: float=0.5,
+                 loss_weights: dict=None,
+                 softlabels_patience: int=1000):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -86,9 +90,21 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.storage = OnlineCLStorage(self.mem_transform, self.online_sampler, 
                                        self.periodic_sampler, self.mem_size)
         self.memory_dataloader = None
+        self.ep_memory_batch_size = 6
         
         # augmentations
         self.cut_mix = cut_mix
+
+        # -------- Soft Labels --------
+        self.softlabels_patience = softlabels_patience
+        self.softlabels_learning = False
+        # softmax temperature
+        self.temperature = temperature
+        self.softmaxt = SoftmaxT(temperature=self.temperature)
+        
+        # losses weights
+        self.kldiv_loss = KLDivLoss(temperature=self.temperature)
+        self.loss_weights = loss_weights
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -115,7 +131,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         # having some memory, then join the current batch with the small batch of memory            
         if self.storage.current_capacity == self.memory_sweep_default_size:
             self.memory_dataloader = iter(DataLoader(self.storage.dataset, 
-                                                     batch_size=6, 
+                                                     batch_size=self.ep_memory_batch_size, 
                                                      shuffle=False,
                                                      num_workers=self.online_sampler.num_workers,
                                                      sampler=ImbalancedDatasetSampler(self.storage.dataset)))
