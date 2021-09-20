@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Sequence, Union
+from typing import Dict, List, Sequence, Union, Dict
 from copy import deepcopy
 import types
 from tqdm import tqdm
@@ -57,7 +57,7 @@ class OnlineCLStorage(object):
         else:
             return MemoryDataset(inputs=self.inputs, targets=self.targets, transform=self.transform)
             
-    def periodic_update_memory(self, x: torch.Tensor, y: torch.Tensor, model: nn.Module, num_samples: int,  **kwargs):
+    def periodic_update_memory(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int,  **kwargs):
         
         # append new batch datapoints into dataset
         # for sampling strategy
@@ -115,7 +115,7 @@ class RMSampler(object):
         
         if num_samples > len(dataset):
             selected_images = [img for img in dataset.inputs]
-            selected_targets = [dict(label=target) for target in dataset.targets]
+            selected_targets = [dict(label=target) if isinstance(target, torch.Tensor) else target for target in dataset.targets]
             return  selected_images, selected_targets
         
         uncertainy_score_per_sample = self._montecarlo(dataset, model)
@@ -126,7 +126,8 @@ class RMSampler(object):
         
         # storage the tensor samples to list
         selected_images = [dataset.inputs[idx] for idx in selected_samples_indices]
-        selected_targets = [dict(label=dataset.targets[idx]) for idx in selected_samples_indices]
+        selected_targets = [dict(label=dataset.targets[idx]) if isinstance(dataset.targets[idx], torch.Tensor) else dataset.targets[idx] \
+                           for idx in selected_samples_indices]
         
         return selected_images, selected_targets
        
