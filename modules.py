@@ -114,9 +114,7 @@ class RMSampler(object):
     def __call__(self, dataset: Dataset, num_samples: int, model: nn.Module) -> Image:
         
         if num_samples > len(dataset):
-            selected_images = [img for img in dataset.inputs]
-            selected_targets = [target for target in dataset.targets]
-            return  selected_images, selected_targets
+            num_samples = len(dataset)
         
         uncertainy_score_per_sample, outputs = self._montecarlo(dataset, model)
         sample_df = pd.DataFrame(uncertainy_score_per_sample)
@@ -231,12 +229,10 @@ class UncertaintySampler(object):
     def __call__(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int,) -> List[torch.Tensor]:
         len_inputs = x.shape[0]
         if num_samples > len_inputs:
-            selected_images = [x_.cpu() for x_ in x]
-            selected_targets = [dict(label=y['label'][i].cpu(), logit=y['logit'][i].cpu()) for i in range(x.shape[0])]
-            return selected_images, selected_targets
+            num_samples = len_inputs
         
         labels = y['label']
-        samples_scores = self._compute_score(x, labels, model)        
+        samples_scores, model_outputs = self._compute_score(x, labels, model)        
         selected_samples_indices = self._select_indices(samples_scores, num_samples=num_samples)
         
         assert len(selected_samples_indices) == num_samples
@@ -245,7 +241,7 @@ class UncertaintySampler(object):
         # convert batch tensor to list of tensor
         selected_images = [x.cpu() for x in selected_images]
         selected_targets = [dict(label=y['label'][i].cpu(), 
-                                 logit=y['logit'][i].cpu()) for i in selected_samples_indices]
+                                 logit=model_outputs['logits'][i].cpu()) for i in selected_samples_indices]
         
         return selected_images, selected_targets
 
@@ -259,6 +255,9 @@ class UncertaintySampler(object):
         # inference to get uncertainty scores
         # given latest updated model
         model.eval()
+        logits = list()
+        outputs = dict()
+        
         with torch.no_grad():
             logit = model(x)
             proba_dist = nn.functional.softmax(logit, dim=1)
@@ -269,8 +268,12 @@ class UncertaintySampler(object):
             if self.negative_mining:
                 negative_scores = scoring.negative_scoring(proba_dist, y)
                 samples_scores += negative_scores
+            
+            for i in range(x.shape[0]):
+                logits.append(logit[i].detach())
         
-        return samples_scores        
+        outputs['logits'] = logits
+        return samples_scores, outputs        
                 
         
 
