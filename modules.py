@@ -21,7 +21,7 @@ from avalanche.benchmarks.utils.data_loader import ReplayDataLoader
 from avalanche.benchmarks.utils import AvalancheConcatDataset, AvalancheDataset
 from avalanche.training.strategies import BaseStrategy
 
-from utils import create_instance, cutmix_data
+from utils import *
 from dataset import MemoryDataset, _default_inverse_transform
 import scoring
 
