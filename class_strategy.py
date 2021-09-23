@@ -67,7 +67,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                  sweep_memory_every_n_iter: int=1000, 
                  memory_sweep_default_size: int=500,
                  num_samples_per_batch: int=5,
-                 cut_mix: bool=True,
+                 cut_mix: Union[bool, dict]=False,
                  ep_memory_batch_size: int=6,
                  lr_scheduler: torch.optim.lr_scheduler=None,
                  temperature: float=0.5,
@@ -96,6 +96,8 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # augmentations
         self.cut_mix = cut_mix
+        if self.cut_mix:
+            self.cut_mix = edict(self.cut_mix)
 
         # -------- Soft Labels --------
         self.softlabels_patience = softlabels_patience
@@ -156,9 +158,9 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # cut mix augmentation if necessary
         if self.cut_mix:
-            self.do_cutmix = self.cut_mix and np.random.rand(1) < 0.5
+            self.do_cutmix = self.cut_mix and np.random.rand(1) < self.cut_mix.probability
             if self.do_cutmix:
-                strategy.mbatch[0], strategy.mbatch[1], labels_b, lambd = cutmix_data(x=strategy.mb_x, y=strategy.mb_y, alpha=0.25)
+                strategy.mbatch[0], strategy.mbatch[1], labels_b, lambd = cutmix_data(x=strategy.mb_x, y=strategy.mb_y, alpha=self.cut_mix.alpha)
                 self.cutmix_out = dict(labels_b=labels_b,
                                        lambd=lambd)
 
