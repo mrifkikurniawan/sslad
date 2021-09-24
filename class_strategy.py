@@ -74,7 +74,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                  loss_weights: dict=None,
                  softlabels_patience: int=1000,
                  logger: object=None,
-                 target_layer: str=None):
+                 target_layer: str=None,
+                 metric_learning: dict=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -82,6 +83,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.sweep_memory_every_n_iter = sweep_memory_every_n_iter
         self.memory_sweep_default_size = memory_sweep_default_size
         self.num_samples_per_batch = num_samples_per_batch
+        self.target_layer = target_layer
         
         # lr scheduler
         self.lr_scheduler = lr_scheduler
@@ -114,6 +116,12 @@ class ClassStrategyPlugin(StrategyPlugin):
         
         # logger
         self.logger = logger
+        
+        # metric learning
+        self.metric_learning = metric_learning
+        if self.metric_learning:
+            self.handlers = list()
+            self.metric_learner = create_instance(self.metric_learning)
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -122,7 +130,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                             num_workers: int = 16, 
                             shuffle: bool = True,
                             **kwargs):
-        pass
+        if self.metric_learning:
+            self._register_forward_hook(strategy.model)
 
     def before_train_dataset_adaptation(self, strategy: 'BaseStrategy',
                                         **kwargs):
@@ -197,6 +206,11 @@ class ClassStrategyPlugin(StrategyPlugin):
 
             strategy.loss *= torch.tensor(self.loss_weights['cross_entropy'][self.milestone_idx]).type_as(strategy.loss)
             strategy.loss += torch.tensor(self.loss_weights['kl_divergence'][self.milestone_idx]).type_as(strategy.loss) * kl_loss
+            
+        # metric learning
+        if self.metric_learning:
+            loss = self.metric_learner(embeddings=self.embeddings, labels=strategy.mb_y)
+            strategy.loss += loss.type_as(strategy.loss)
 
     def after_backward(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -248,7 +262,8 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def after_training_exp(self, strategy: 'BaseStrategy', **kwargs):
-        pass
+        if self.metric_learning:
+            self.remove_hook()
 
     def after_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -283,3 +298,22 @@ class ClassStrategyPlugin(StrategyPlugin):
 
     def after_eval_iteration(self, strategy: 'BaseStrategy', **kwargs):
         pass
+    
+    def _register_forward_hook(self, model: nn.Module):
+        self.embeddings = dict()
+        def get_features(key):
+            def forward_hook(module, input, output):
+                self.embeddings[key] = output
+            return forward_hook
+        
+        # add forward hook 
+        for name, module in model.named_modules():
+            if self.target_layer == name:
+                self.handlers.append(module.register_forward_hook(get_features(key=name)))
+                
+    def remove_hook(self):
+        """
+        Remove all the forward/backward hook functions
+        """
+        for handle in self.handlers:
+            handle.remove() 
