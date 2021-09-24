@@ -61,7 +61,8 @@ method:
             augmentation: vr_randaug
             batch_size: 32
             num_workers: 10
-
+        
+        # softlabels learning
         loss_weights: 
           milestones: [1700, 2000, 2100]
           cross_entropy: [1.0, 1.0, 1.0]
