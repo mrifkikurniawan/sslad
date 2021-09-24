@@ -73,7 +73,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                  temperature: float=0.5,
                  loss_weights: dict=None,
                  softlabels_patience: int=1000,
-                 logger: object=None):
+                 logger: object=None,
+                 target_layer: str=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -90,7 +91,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.online_sampler = create_instance(online_sampler)
         self.periodic_sampler = create_instance(periodic_sampler)
         self.storage = OnlineCLStorage(self.mem_transform, self.online_sampler, 
-                                       self.periodic_sampler, self.mem_size)
+                                       self.periodic_sampler, self.mem_size, target_layer)
         self.memory_dataloader = False
         self.ep_memory_batch_size = ep_memory_batch_size
         
