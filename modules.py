@@ -32,7 +32,8 @@ class OnlineCLStorage(object):
                  transform: callable=None,
                  online_sampler: callable=None,
                  periodic_sampler: callable=None,
-                 mem_size: int=1000):
+                 mem_size: int=1000,
+                 target_layer: str=None):
         super().__init__()
         
         self.inputs = list()
@@ -41,6 +42,7 @@ class OnlineCLStorage(object):
         self.transform = transform
         self.online_sampler = online_sampler
         self.periodic_sampler = periodic_sampler
+        self.target_layer = target_layer
 
     @property
     def current_capacity(self):
@@ -64,7 +66,9 @@ class OnlineCLStorage(object):
         self.dataset.append(inputs=x, targets=y)
         
         # sampling periodically
-        inputs_samples, targets_samples = self.periodic_sampler(dataset=self.dataset, model=model, num_samples=num_samples, **kwargs)
+        inputs_samples, targets_samples = self.periodic_sampler(dataset=self.dataset, model=model, 
+                                                                num_samples=num_samples, target_layer=self.target_layer, 
+                                                                **kwargs)
         
         # assigne new samples to memory
         self.inputs = inputs_samples
@@ -84,7 +88,8 @@ class OnlineCLStorage(object):
             pass
         elif self.current_capacity <= self.mem_size:
             inputs_samples, targets_samples = self.online_sampler(x=x, y=y, model=model, 
-                                                                  num_samples=num_samples, **kwargs)
+                                                                  num_samples=num_samples, 
+                                                                  target_layer=self.target_layer, **kwargs)
             
             # transform inverse to original pil image if inputs is normalized tensor
             if isinstance(inputs_samples[0], torch.Tensor):
@@ -110,11 +115,16 @@ class RMSampler(object):
         self.augmentation = augmentation
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.handlers = list()
     
-    def __call__(self, dataset: Dataset, num_samples: int, model: nn.Module) -> Image:
+    def __call__(self, dataset: Dataset, num_samples: int, model: nn.Module, target_layer: str) -> Image:
         
         if num_samples > len(dataset):
             num_samples = len(dataset)
+        
+        # register forward hook to get features
+        self.target_layer = target_layer
+        self._register_forward_hook(model)
         
         uncertainy_score_per_sample, outputs = self._montecarlo(dataset, model)
         sample_df = pd.DataFrame(uncertainy_score_per_sample)
@@ -126,11 +136,27 @@ class RMSampler(object):
         selected_images = [dataset.inputs[idx] for idx in selected_samples_indices]
         selected_targets = [dataset.targets[idx] for idx in selected_samples_indices]
         logits = outputs['logits']
+        features = outputs['features']
         for i, idx in enumerate(selected_samples_indices):
             selected_targets[i]['logit'] = logits[idx]
+            selected_targets[i]['feature'] = features[idx]
+        
+        # remove hook
+        self.remove_hook()
         
         return selected_images, selected_targets
-       
+    
+    def _register_forward_hook(self, model: nn.Module):
+        self.features = dict()
+        def get_features(key):
+            def forward_hook(module, input, output):
+                self.features[key] = output#.detach()
+            return forward_hook
+        
+        # add forward hook 
+        for name, module in model.named_modules():
+            if self.target_layer == name:
+                self.handlers.append(module.register_forward_hook(get_features(key=name)))
 
     def _select_indices(self, sample_df: pd.DataFrame, num_samples: int) -> List[int]:
         uncertain_samples = sample_df.sort_values(by="uncertainty", ascending=False)
@@ -181,6 +207,7 @@ class RMSampler(object):
         uncertainty_scores = list()
         labels = list()
         logits = list()
+        features = list()
         outputs = dict()
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
         
@@ -200,10 +227,12 @@ class RMSampler(object):
                     uncertainty_scores.append(uncertainty_value)
                     labels.append(y['label'][i].item())
                     logits.append(cert_value)
+                    features.append(self.features[self.target_layer][i].detach().cpu())
 
         # return back the original transform
         dataset.transform = original_dataset_transform
-        outputs['logits'] = logits    
+        outputs['logits'] = logits
+        outputs['features'] = features    
         return uncertainty_scores, labels, outputs
 
     def _variance_ratio(self, sample, cand_length):
@@ -214,7 +243,12 @@ class RMSampler(object):
         assert vote_counter.sum() == cand_length
         sample["uncertainty"] = (1 - vote_counter.max() / cand_length).item()
         
-
+    def remove_hook(self):
+        """
+        Remove all the forward/backward hook functions
+        """
+        for handle in self.handlers:
+            handle.remove()
 
 class UncertaintySampler(object):
     def __init__(self, 
@@ -225,12 +259,17 @@ class UncertaintySampler(object):
         self.num_workers = num_workers
         self.scoring = getattr(scoring, scoring_method)
         self.negative_mining = negative_mining
+        self.handlers = list()
     
-    def __call__(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int,) -> List[torch.Tensor]:
+    def __call__(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int, target_layer: str) -> List[torch.Tensor]:
         len_inputs = x.shape[0]
         if num_samples > len_inputs:
             num_samples = len_inputs
-        
+
+        # register forward hook to get features
+        self.target_layer = target_layer
+        self._register_forward_hook(model)
+ 
         labels = y['label']
         samples_scores, model_outputs = self._compute_score(x, labels, model)        
         selected_samples_indices = self._select_indices(samples_scores, num_samples=num_samples)
@@ -241,9 +280,25 @@ class UncertaintySampler(object):
         # convert batch tensor to list of tensor
         selected_images = [x.cpu() for x in selected_images]
         selected_targets = [dict(label=y['label'][i].cpu(), 
-                                 logit=model_outputs['logits'][i].cpu()) for i in selected_samples_indices]
+                                 logit=model_outputs['logits'][i].cpu(), 
+                                 feature=model_outputs['features'][i].cpu()) for i in selected_samples_indices]
+        
+        # remove hook
+        self.remove_hook()
         
         return selected_images, selected_targets
+
+    def _register_forward_hook(self, model: nn.Module):
+        self.features = dict()
+        def get_features(key):
+            def forward_hook(module, input, output):
+                self.features[key] = output#.detach()
+            return forward_hook
+        
+        # add forward hook 
+        for name, module in model.named_modules():
+            if self.target_layer == name:
+                self.handlers.append(module.register_forward_hook(get_features(key=name)))
 
     def _select_indices(self, samples_scores: torch.Tensor, num_samples: int) -> torch.Tensor:
         selected_samples_indices = torch.topk(samples_scores, k=num_samples, dim=0, largest=False)[1]
@@ -256,6 +311,7 @@ class UncertaintySampler(object):
         # given latest updated model
         model.eval()
         logits = list()
+        features = list()
         outputs = dict()
         
         with torch.no_grad():
@@ -271,11 +327,18 @@ class UncertaintySampler(object):
             
             for i in range(x.shape[0]):
                 logits.append(logit[i].detach())
+                features.append(logit[i].detach())
         
         outputs['logits'] = logits
+        outputs['features'] = features
         return samples_scores, outputs        
                 
-        
+    def remove_hook(self):
+        """
+        Remove all the forward/backward hook functions
+        """
+        for handle in self.handlers:
+            handle.remove() 
 
 class Prototypes(object):
     def __init__(self, 
