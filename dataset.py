@@ -40,7 +40,9 @@ class MemoryDataset(Dataset):
         if isinstance(inputs, torch.Tensor) or isinstance(targets, dict):
             len_inputs = inputs.shape[0]
             inputs = [x for x in inputs]
-            targets = [dict(label=targets['label'][i], logit=targets['logit'][i]) for i in range(len_inputs)]
+            targets = [dict(label=targets['label'][i],  
+                            logit=targets['logit'][i],
+                            feature=targets['feature'][i]) for i in range(len_inputs)]
             
         # invers transform
         if isinstance(inputs[0], torch.Tensor):

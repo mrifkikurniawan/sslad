@@ -63,6 +63,9 @@ class OnlineCLStorage(object):
         
         # append new batch datapoints into dataset
         # for sampling strategy
+        if not 'feature' in y:
+            batch_size = x.shape[0] 
+            y['feature'] = torch.Tensor(batch_size, 2048)
         self.dataset.append(inputs=x, targets=y)
         
         # sampling periodically
@@ -227,7 +230,7 @@ class RMSampler(object):
                     uncertainty_scores.append(uncertainty_value)
                     labels.append(y['label'][i].item())
                     logits.append(cert_value)
-                    features.append(self.features[self.target_layer][i].detach().cpu())
+                    features.append(self.features[self.target_layer][i].detach().cpu().squeeze())
 
         # return back the original transform
         dataset.transform = original_dataset_transform
@@ -327,7 +330,7 @@ class UncertaintySampler(object):
             
             for i in range(x.shape[0]):
                 logits.append(logit[i].detach())
-                features.append(logit[i].detach())
+                features.append(self.features[self.target_layer][i].detach().squeeze())
         
         outputs['logits'] = logits
         outputs['features'] = features
