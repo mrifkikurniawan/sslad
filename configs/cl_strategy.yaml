@@ -35,6 +35,7 @@ method:
         num_samples_per_batch: 5
         cut_mix: False
         temperature: 0.5
+        target_layer: avgpool
         softlabels_patience: 1700
         ep_memory_batch_size: 6
         memory_transforms: [
