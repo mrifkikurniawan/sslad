@@ -102,4 +102,7 @@ hparams_optimizer:
     - name: plugins.args.metric_learning.args.losses.weight
       index: 0
       method: suggest_float
-      trial_args: "'constrastive_weight', 0.3, 0.7"
+      trial_args: 
+        namee: constrastive_weight
+        low: 0.3
+        high: 0.7
