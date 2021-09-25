@@ -103,6 +103,6 @@ hparams_optimizer:
       index: 0
       method: suggest_float
       trial_args: 
-        namee: constrastive_weight
+        name: constrastive_weight
         low: 0.3
         high: 0.7
