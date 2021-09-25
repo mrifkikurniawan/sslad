@@ -71,13 +71,16 @@ method:
 
         # metric learning
         metric_learning:
-          losses: 
-            - module: pytorch_metric_learning.losses
-              method: ContrastiveLoss
-              args: 
-                pos_margin: 0.0
-                neg_margin: 1.0
-              weight: 1.0
+          module: modules
+          method: MetricLearner
+          args:
+            losses: 
+              - module: pytorch_metric_learning.losses
+                method: ContrastiveLoss
+                args: 
+                  pos_margin: 0.0
+                  neg_margin: 1.0
+                weight: 0.3
 
 
     logger:
@@ -85,8 +88,8 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: softlabels-learning
+        name: contrastive-learning-sota
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels]
-        notes: softlabels modif milestone
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, sota]
+        notes: contrastive learning
