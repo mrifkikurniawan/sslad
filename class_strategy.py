@@ -209,7 +209,7 @@ class ClassStrategyPlugin(StrategyPlugin):
             
         # metric learning
         if self.metric_learning:
-            loss = self.metric_learner(embeddings=self.embeddings, labels=strategy.mb_y)
+            loss = self.metric_learner(embeddings=self.embeddings[self.target_layer].squeeze(), labels=strategy.mb_y)
             strategy.loss += loss.type_as(strategy.loss)
 
     def after_backward(self, strategy: 'BaseStrategy', **kwargs):
