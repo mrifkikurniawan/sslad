@@ -51,7 +51,7 @@ def main():
     
 def train(trial: optuna.trial.Trial):
     seed = 0
-    args.root = f"{args.root}/SSLAD-2D/labeled"
+    root = f"{args.root}/SSLAD-2D/labeled"
     config = edict(yaml.safe_load(open(args.config, "r")))
     device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id >= 0 else "cpu")
     logger = SummaryWriter(log_dir=args.name, comment=args.comment)
@@ -115,12 +115,12 @@ def train(trial: optuna.trial.Trial):
        raise ValueError(f"Batch size {batch_size} not allowed, should be less than or equal to 10")
 
     img_size = 64
-    train_sets = create_train_set(args.root, img_size)
+    train_sets = create_train_set(root, img_size)
     evaluate = 'test' if args.test else 'val'
     if evaluate == "val":
-        test_sets = create_val_set(args.root, img_size)
+        test_sets = create_val_set(root, img_size)
     else:
-        test_sets, _ = create_test_set_from_pkl(args.root, img_size)
+        test_sets, _ = create_test_set_from_pkl(root, img_size)
 
     benchmark = create_multi_dataset_generic_benchmark(train_datasets=train_sets, test_datasets=test_sets)
 
