@@ -9,3 +9,4 @@ timm
 git+https://github.com/ufoym/imbalanced-dataset-sampler.git
 wandb
 pytorch-metric-learning
+optuna
