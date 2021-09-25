@@ -65,8 +65,6 @@ def train(trial: optuna.trial.Trial):
     print(f"store prediction: {args.store}")
     print(f"eval on test set: {args.test}")
     print(f"method: {config.method.method}")
-    for k in config.method.args.keys():
-        print(f"{k}: {config.method.args[k]}")
         
     # logging
     hparams = edict(method=config.method)
@@ -75,7 +73,7 @@ def train(trial: optuna.trial.Trial):
     # set hparams optimizer val to method config
     for hparam in hparams_optimizer_cfg.hparams:
         suggest_method = getattr(trial, hparam.method)
-        hparam_val = suggest_method(eval(hparam.trial_args))
+        hparam_val = suggest_method(**hparam.trial_args)
         param_name = hparam.name.split('.')
         temporary_cfg = config.method.args
           
@@ -87,6 +85,10 @@ def train(trial: optuna.trial.Trial):
                 temporary_cfg = temporary_cfg.get(attr)
             elif i == len(param_name)-1:
                 temporary_cfg[attr] = hparam_val
+    
+    # print hparams
+    for k in config.method.args.keys():
+        print(f"{k}: {config.method.args[k]}")
     
     for k in hparams.keys():
         logger.add_text(k, str(hparams[k]))
