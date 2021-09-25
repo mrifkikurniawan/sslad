@@ -93,3 +93,13 @@ method:
         save_code: True
         tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, sota]
         notes: contrastive learning
+
+
+hparams_optimizer:
+  direction: maximize
+  n_trials: 50
+  hparams:
+    - name: plugins.args.metric_learning.args.losses.weight
+      index: 0
+      method: suggest_float
+      trial_args: "'constrastive_weight', 0.3, 0.7"

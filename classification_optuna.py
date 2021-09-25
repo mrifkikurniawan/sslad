@@ -14,9 +14,11 @@ from class_strategy import *
 from classification_util import *
 from utils import create_instance, seed_everything
 from torch.utils.tensorboard import SummaryWriter
-
+import optuna
+from optuna.trial import TrialState
 
 def main():
+    global args, hparams_optimizer_cfg
     parser = argparse.ArgumentParser()
     parser.add_argument('--name', type=str, default='result',
                         help='Name of the result files')
@@ -38,19 +40,23 @@ def main():
     parser.add_argument('--store_model', action='store_true',
                         help="Stores model if specified. Has no effect is store is not set")
     args = parser.parse_args()
-
+    config = edict(yaml.safe_load(open(args.config, "r")))
+    hparams_optimizer_cfg = config.hparams_optimizer
+    
     ######################################
     #                                    #
     # Editing below this line allowed    #
     #                                    #
     ######################################
+    
+def train(trial: optuna.trial.Trial):
     seed = 0
     args.root = f"{args.root}/SSLAD-2D/labeled"
     config = edict(yaml.safe_load(open(args.config, "r")))
     device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id >= 0 else "cpu")
     logger = SummaryWriter(log_dir=args.name, comment=args.comment)
     seed_everything(seed)
-    
+
     # print configuration
     print("--------Configuration--------")
     print(f"gpu_id: {args.gpu_id}")
@@ -64,6 +70,24 @@ def main():
         
     # logging
     hparams = edict(method=config.method)
+    
+    # --------- Optuna Hparams Optimizer ---------
+    # set hparams optimizer val to method config
+    for hparam in hparams_optimizer_cfg.hparams:
+        suggest_method = getattr(trial, hparam.method)
+        hparam_val = suggest_method(eval(hparam.trial_args))
+        param_name = hparam.name.split('.')
+        temporary_cfg = config.method.args
+          
+        # set proposed hparam value to config file 
+        for i, attr in enumerate(param_name):
+            if isinstance(temporary_cfg, list):
+                temporary_cfg = temporary_cfg[int(hparam.index)]
+            if i < len(param_name) - 1:
+                temporary_cfg = temporary_cfg.get(attr)
+            elif i == len(param_name)-1:
+                temporary_cfg[attr] = hparam_val
+    
     for k in hparams.keys():
         logger.add_text(k, str(hparams[k]))
 
@@ -140,5 +164,24 @@ def main():
     if args.store_model:
         torch.save(model.state_dict(), f'./{args.name}.pt')
     
-if __name__ == '__main__':
+    return sum(accuracies_test) / len(accuracies_test) * 100
+    
+if __name__ == '__main__':  
     main()
+    
+    # optuna hparams optimizer
+    study = optuna.create_study(direction=hparams_optimizer_cfg.direction)
+    study.optimize(train, n_trials=hparams_optimizer_cfg.n_trials)
+
+    pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
+    complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
+
+    print("----- Study statistics -----")
+    print("Number of finished trials: ", len(study.trials))
+    print("Number of pruned trials: ", len(pruned_trials))
+    print("Number of complete trials: ", len(complete_trials))
+
+    # best trial
+    print(f"Best trial: {study.best_trial}")
+    print(f"Best params: {study.best_params}")
+    print(f"Best metric acc: {study.best_value}")
