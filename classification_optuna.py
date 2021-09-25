@@ -166,6 +166,9 @@ def train(trial: optuna.trial.Trial):
     if args.store_model:
         torch.save(model.state_dict(), f'./{args.name}.pt')
     
+    # finish wandb logger
+    logger_ext.finish()
+    
     return sum(accuracies_test) / len(accuracies_test) * 100
     
 if __name__ == '__main__':  
