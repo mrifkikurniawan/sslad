@@ -81,6 +81,11 @@ method:
                   pos_margin: 0.0
                   neg_margin: 1.0
                 weight: 0.3
+              - module: pytorch_metric_learning.losses
+                method: SupConLoss
+                args:
+                  temperature: 0.1
+                weight: 0.5
 
 
     logger:
@@ -88,21 +93,22 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: contrastive-learning-sota
+        name: SupConLoss
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, sota]
-        notes: contrastive learning
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss]
+        notes: SupConLoss
 
 
 hparams_optimizer:
   direction: maximize
-  n_trials: 50
+  n_trials: 20
   hparams:
     - name: plugins.args.metric_learning.args.losses.weight
-      index: 0
-      method: suggest_float
+      index: 1
+      method: suggest_discrete_uniform
       trial_args: 
-        name: constrastive_weight
-        low: 0.3
-        high: 0.7
+        name: TripletMarginLoss_weight
+        low: 0.1
+        high: 1.0
+        q: 0.1
