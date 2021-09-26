@@ -85,7 +85,7 @@ method:
                 method: SupConLoss
                 args:
                   temperature: 0.1
-                weight: 0.5
+                weight: 0.1
 
 
     logger:
