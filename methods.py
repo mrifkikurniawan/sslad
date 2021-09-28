@@ -2,6 +2,7 @@ from easydict import EasyDict as edict
 
 import torch.nn as nn
 from avalanche.training.plugins import EWCPlugin, ReplayPlugin, SynapticIntelligencePlugin, AGEMPlugin, LwFPlugin, CoPEPlugin, CWRStarPlugin
+import timm
 
 from class_strategy import *
 from utils import create_instance
@@ -17,9 +18,13 @@ class CLStrategy(object):
                  logger: edict
                  ):
         
-        self._model = create_instance(deepcopy(model))
+        # model
+        head_layer = model.head_layer
         embedding_dims = model.embedding_dims
-        self._model.fc = nn.Linear(embedding_dims, 7, bias=False)
+        self._model = create_instance(deepcopy(model))
+        classifier = nn.Linear(embedding_dims, 7, bias=False)
+        setattr(self._model, head_layer, classifier)
+        
         self._optimizer = create_instance(deepcopy(optimizer), params=self._model.parameters())
         self._lr_scheduler = create_instance(deepcopy(lr_scheduler), optimizer=self._optimizer)
         self._criterion = create_instance(deepcopy(criterion)) 
