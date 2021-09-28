@@ -18,7 +18,8 @@ class CLStrategy(object):
                  ):
         
         self._model = create_instance(deepcopy(model))
-        self._model.fc = nn.Linear(2048, 7, bias=False)
+        embedding_dims = model.embedding_dims
+        self._model.fc = nn.Linear(embedding_dims, 7, bias=False)
         self._optimizer = create_instance(deepcopy(optimizer), params=self._model.parameters())
         self._lr_scheduler = create_instance(deepcopy(lr_scheduler), optimizer=self._optimizer)
         self._criterion = create_instance(deepcopy(criterion)) 
@@ -30,7 +31,8 @@ class CLStrategy(object):
                                           'plugins': plugins,
                                         }
                                   )
-        self._plugins = create_instance(plugins, lr_scheduler=self._lr_scheduler, logger=self._logger)
+        self._plugins = create_instance(plugins, lr_scheduler=self._lr_scheduler, logger=self._logger,
+                                        embedding_dims=embedding_dims)
     
     @property
     def model(self):

@@ -33,7 +33,8 @@ class OnlineCLStorage(object):
                  online_sampler: callable=None,
                  periodic_sampler: callable=None,
                  mem_size: int=1000,
-                 target_layer: str=None):
+                 target_layer: str=None,
+                 embedding_dims: int=2048):
         super().__init__()
         
         self.inputs = list()
@@ -43,6 +44,7 @@ class OnlineCLStorage(object):
         self.online_sampler = online_sampler
         self.periodic_sampler = periodic_sampler
         self.target_layer = target_layer
+        self.embedding_dims = embedding_dims
 
     @property
     def current_capacity(self):
@@ -65,7 +67,7 @@ class OnlineCLStorage(object):
         # for sampling strategy
         if not 'feature' in y:
             batch_size = x.shape[0] 
-            y['feature'] = torch.Tensor(batch_size, 2048)
+            y['feature'] = torch.Tensor(batch_size, self.embedding_dims)
         self.dataset.append(inputs=x, targets=y)
         
         # sampling periodically

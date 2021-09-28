@@ -75,7 +75,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                  softlabels_patience: int=1000,
                  logger: object=None,
                  target_layer: str=None,
-                 metric_learning: dict=None):
+                 metric_learning: dict=None,
+                 embedding_dims: int=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -84,6 +85,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.memory_sweep_default_size = memory_sweep_default_size
         self.num_samples_per_batch = num_samples_per_batch
         self.target_layer = target_layer
+        self.embedding_dims = embedding_dims
         
         # lr scheduler
         self.lr_scheduler = lr_scheduler
@@ -93,7 +95,8 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.online_sampler = create_instance(online_sampler)
         self.periodic_sampler = create_instance(periodic_sampler)
         self.storage = OnlineCLStorage(self.mem_transform, self.online_sampler, 
-                                       self.periodic_sampler, self.mem_size, target_layer)
+                                       self.periodic_sampler, self.mem_size, target_layer,
+                                       self.embedding_dims)
         self.memory_dataloader = False
         self.ep_memory_batch_size = ep_memory_batch_size
         
