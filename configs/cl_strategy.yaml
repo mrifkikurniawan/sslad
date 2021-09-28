@@ -7,6 +7,8 @@ method:
       method: resnet50
       args:
         pretrained: True
+      head_layer: fc
+      embedding_dims: 2048
 
     optimizer:
       module: torch.optim
