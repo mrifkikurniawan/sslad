@@ -3,8 +3,8 @@ method:
   method: CLStrategy
   args:
     model:
-      module: torchvision.models
-      method: resnet50
+      module: timm.models
+      method: resnet50d
       args:
         pretrained: True
       head_layer: fc
@@ -14,7 +14,7 @@ method:
       module: torch.optim
       method: SGD
       args:
-        lr: 0.01
+        lr: 0.011
     
     criterion:
       module: torch.nn
