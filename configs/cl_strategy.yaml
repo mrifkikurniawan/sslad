@@ -14,7 +14,7 @@ method:
       module: torch.optim
       method: SGD
       args:
-        lr: 0.011
+        lr: 0.0111
     
     criterion:
       module: torch.nn
