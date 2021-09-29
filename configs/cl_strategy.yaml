@@ -95,11 +95,11 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: SupConLoss
+        name: resnet50d
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss]
-        notes: SupConLoss
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d]
+        notes: resnet50d
 
 
 hparams_optimizer:
