@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
-__all__ = ['KLDivLoss']
+__all__ = ['KLDivLoss', 'FocalLoss']
 
 class KLDivLoss(nn.Module):
     def __init__(self, temperature: float, **kwargs):
