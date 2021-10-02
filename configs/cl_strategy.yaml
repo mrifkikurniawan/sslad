@@ -17,8 +17,12 @@ method:
         lr: 0.0111
     
     criterion:
-      module: torch.nn
-      method: CrossEntropyLoss
+      module: loss
+      method: FocalLoss
+      args:
+        gamma: 0.0
+        alpha: 0.5
+        reduction: mean
     
     lr_scheduler:
       module: torch.optim.lr_scheduler
@@ -95,11 +99,11 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: resnet50d
+        name: FocalLoss-sota
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d]
-        notes: resnet50d
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, FocalLoss]
+        notes: FocalLoss
 
 
 hparams_optimizer:
