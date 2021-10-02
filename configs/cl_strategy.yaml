@@ -100,11 +100,11 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: FocalLoss-sota
+        name: CostSenstiveCrossEntropy
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, FocalLoss]
-        notes: FocalLoss
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, CostSenstiveCrossEntropy]
+        notes: CostSenstiveCrossEntropy
 
 
 hparams_optimizer:
