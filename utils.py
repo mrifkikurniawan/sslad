@@ -25,7 +25,7 @@ def create_instance(module_cfg: Union[dict, edict], **kwargs):
     if module_args != None:
         instance = module(**module_args)
     else:
-        instance = module()
+        instance = module
         
     return instance
 
@@ -178,3 +178,11 @@ def clone_module(module, memo=None):
     if hasattr(clone, 'flatten_parameters'):
         clone = clone._apply(lambda x: x)
     return clone
+
+
+def get_batch_distribution(inputs: torch.Tensor, num_classes: int) -> torch.Tensor:
+    distribution = torch.zeros(num_classes)
+    for c in range(num_classes):
+        distribution[c] = torch.sum(inputs == c)
+    
+    return distribution
