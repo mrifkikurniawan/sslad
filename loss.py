@@ -1,5 +1,7 @@
 from typing import Optional
+import numpy as np
 
+from utils import get_batch_distribution, create_instance
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -34,7 +36,8 @@ class FocalLoss(nn.Module):
     def forward(
             self,
             input: torch.Tensor,
-            target: torch.Tensor) -> torch.Tensor:
+            target: torch.Tensor, 
+            weight: torch.Tensor=None) -> torch.Tensor:
         if not torch.is_tensor(input):
             raise TypeError("Input type is not a torch.Tensor. Got {}"
                             .format(type(input)))
@@ -55,9 +58,16 @@ class FocalLoss(nn.Module):
         target_one_hot = F.one_hot(target, num_classes=input.shape[1])
 
         # compute the actual focal loss
-        weight = torch.pow(1. - input_soft, self.gamma)
-        focal = -self.alpha * weight * torch.log(input_soft)
-        loss_tmp = torch.sum(target_one_hot * focal, dim=1)
+        fl_weight = torch.pow(1. - input_soft, self.gamma)
+        focal = -self.alpha * fl_weight * torch.log(input_soft)
+        loss_tmp = target_one_hot * focal
+        
+        # weighting the loss
+        if weight is not None: 
+            assert loss_tmp.shape[1] == weight.shape[0]
+            loss_tmp = torch.mul(loss_tmp, weight)
+        
+        loss_tmp = torch.sum(loss_tmp, dim=1)
 
         loss = -1
         if self.reduction == 'none':
@@ -109,3 +119,38 @@ class MultipleLosses(torch.nn.Module):
                     assert all(k in self.losses.keys() for k in x.keys())
             else:
                 assert len(x) == len(self.losses)
+                
+                
+
+class CostSenstiveLoss(nn.Module):
+    def __init__(self, 
+                 loss: dict=None,
+                 num_classes: int=7, 
+                 **kwargs: dict):
+        super().__init__()
+        
+        self.num_classes = num_classes
+        self.kwargs = kwargs
+        self.dataset_distribution = torch.zeros(self.num_classes)
+        self.num_iter = 0
+        self.epsilon = 1e-6
+        self.loss = create_instance(loss)
+        
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor):
+        loss = torch.tensor(0.0).type_as(inputs)
+        distribution = get_batch_distribution(targets, self.num_classes) + self.epsilon
+        weight = (torch.min(distribution[1:]) / distribution).type_as(inputs)
+        loss += self.loss(inputs, targets, weight=weight, **self.kwargs)
+        
+        self.num_iter += 1
+        self.dataset_distribution += distribution
+        
+        return loss
+    
+
+class ClassBalancedLoss(nn.Module): 
+    def __init__(self):
+        pass
+    
+    def forward(self):
+        pass
