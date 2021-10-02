@@ -18,11 +18,12 @@ method:
     
     criterion:
       module: loss
-      method: FocalLoss
+      method: CostSenstiveLoss
       args:
-        gamma: 0.0
-        alpha: 0.5
-        reduction: mean
+        num_classes: 7
+        loss: 
+          module: torch.nn.functional 
+          method: cross_entropy
     
     lr_scheduler:
       module: torch.optim.lr_scheduler
