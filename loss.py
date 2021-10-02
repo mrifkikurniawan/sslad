@@ -70,3 +70,42 @@ class FocalLoss(nn.Module):
             raise NotImplementedError("Invalid reduction mode: {}"
                                       .format(self.reduction))
         return loss
+    
+
+class MultipleLosses(torch.nn.Module):
+    def __init__(self, losses, weights=None):
+        super().__init__()
+        self.is_dict = isinstance(losses, dict)
+        self.losses = (
+            torch.nn.ModuleDict(losses) if self.is_dict else torch.nn.ModuleList(losses)
+        )
+
+        if weights is not None:
+            self.assertions_if_not_none(weights, match_all_keys=True)
+            self.weights = weights
+        else:
+            self.weights = (
+                {k: 1 for k in self.losses.keys()}
+                if self.is_dict
+                else [1] * len(losses)
+            )
+
+    def forward(self, inputs, labels):
+        total_loss = 0
+        iterable = self.losses.items() if self.is_dict else enumerate(self.losses)
+        for i, loss_func in iterable:
+            total_loss += (
+                loss_func(inputs, labels) * self.weights[i]
+            )
+        return total_loss
+
+    def assertions_if_not_none(self, x, match_all_keys):
+        if x is not None:
+            if self.is_dict:
+                assert isinstance(x, dict)
+                if match_all_keys:
+                    assert sorted(list(x.keys())) == sorted(list(self.losses.keys()))
+                else:
+                    assert all(k in self.losses.keys() for k in x.keys())
+            else:
+                assert len(x) == len(self.losses)

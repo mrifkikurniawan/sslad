@@ -27,7 +27,11 @@ class CLStrategy(object):
         
         self._optimizer = create_instance(deepcopy(optimizer), params=self._model.parameters())
         self._lr_scheduler = create_instance(deepcopy(lr_scheduler), optimizer=self._optimizer)
-        self._criterion = create_instance(deepcopy(criterion)) 
+        if criterion['method'] == "MultipleLosses":
+            losses = [create_instance(loss) for loss in criterion['args']['losses']]
+            self._criterion = create_instance(deepcopy(criterion), losses=losses)
+        else:
+            self._criterion = create_instance(deepcopy(criterion)) 
         self._logger = create_instance(logger,
                                   config={'model': model, 
                                           'optimizer': optimizer, 
