@@ -2,11 +2,11 @@ from easydict import EasyDict as edict
 
 import torch.nn as nn
 from avalanche.training.plugins import EWCPlugin, ReplayPlugin, SynapticIntelligencePlugin, AGEMPlugin, LwFPlugin, CoPEPlugin, CWRStarPlugin
-import timm
 
 from class_strategy import *
-from utils import create_instance
-from models import MLP
+from ocl.utils import create_instance
+
+
 
 class CLStrategy(object):
     def __init__(self, 
@@ -62,6 +62,9 @@ class CLStrategy(object):
     @property
     def logger(self):
         return self._logger
+    
+    
+    
 class NaiveFinetune(object):
     def __init__(self, 
                  model: edict,
