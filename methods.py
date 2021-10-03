@@ -1,4 +1,5 @@
 from easydict import EasyDict as edict
+from copy import deepcopy
 
 import torch.nn as nn
 from avalanche.training.plugins import EWCPlugin, ReplayPlugin, SynapticIntelligencePlugin, AGEMPlugin, LwFPlugin, CoPEPlugin, CWRStarPlugin

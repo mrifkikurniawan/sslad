@@ -3,7 +3,7 @@ from typing import Dict, List
 import torch
 import torch.nn as nn
 from ocl.utils import *
-import scoring
+from ocl.modules import scoring
 
 
 class UncertaintySampler(object):

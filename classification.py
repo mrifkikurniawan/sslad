@@ -13,7 +13,7 @@ from avalanche.training.strategies import Naive
 
 from class_strategy import *
 from classification_util import *
-from utils import create_instance, seed_everything
+from ocl.utils import create_instance, seed_everything
 from torch.utils.tensorboard import SummaryWriter
 
 

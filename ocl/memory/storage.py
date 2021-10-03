@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 import torchvision
 
-from ocl.utils import 
+from ocl.utils import *
 from ocl.memory import MemoryDataset
 
 

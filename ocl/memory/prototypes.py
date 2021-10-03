@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from avalanche.benchmarks.utils import AvalancheDataset
-from utils import *
+from ocl.utils import *
 
 
 
