@@ -17,13 +17,13 @@ method:
         lr: 0.0111
     
     criterion:
-      module: loss
+      module: ocl.loss
       method: ClassBalancedLoss
       args:
         num_classes: 7
         beta: 0.81
         loss: 
-          module: loss
+          module: ocl.loss
           method: FocalLoss
           args:
             gamma: 0.0
@@ -59,7 +59,7 @@ method:
 
         # online sampler
         online_sampler: 
-          module: modules
+          module: ocl.sampler
           method: UncertaintySampler
           args:
             num_workers: 10
@@ -68,7 +68,7 @@ method:
           
         # periodic sampler
         periodic_sampler:
-          module: modules
+          module: ocl.sampler
           method: RMSampler
           args:
             augmentation: vr_randaug
@@ -83,7 +83,7 @@ method:
 
         # metric learning
         metric_learning:
-          module: modules
+          module: ocl.modules
           method: MetricLearner
           args:
             losses: 
