@@ -18,12 +18,17 @@ method:
     
     criterion:
       module: loss
-      method: CostSenstiveLoss
+      method: ClassBalancedLoss
       args:
         num_classes: 7
+        beta: 0.81
         loss: 
-          module: torch.nn.functional 
-          method: cross_entropy
+          module: loss
+          method: FocalLoss
+          args:
+            gamma: 0.0
+            alpha: 0.5
+            reduction: mean
     
     lr_scheduler:
       module: torch.optim.lr_scheduler
@@ -100,11 +105,11 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: CostSenstiveCrossEntropy
+        name: ClassBalancedFocalLoss-sota
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, CostSenstiveCrossEntropy]
-        notes: CostSenstiveCrossEntropy
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, ClassBalancedFocalLoss, sota]
+        notes: ClassBalancedFocalLoss
 
 
 hparams_optimizer:
