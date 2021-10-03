@@ -1,29 +1,20 @@
-from collections import defaultdict
-from typing import Dict, List, Sequence, Union
-from copy import deepcopy
-import types
-from tqdm import tqdm
+from typing import Dict, List, Union
 from easydict import EasyDict as edict
-
-from randaugment import RandAugment
-import pandas as pd
 import numpy as np
 
 import torch
 import torch.nn as nn
-from torch.utils.data import random_split, DataLoader, Subset
+from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from torchsampler import ImbalancedDatasetSampler
 
 from avalanche.training.plugins.strategy_plugin import StrategyPlugin
-from avalanche.benchmarks.utils.data_loader import ReplayDataLoader
-from avalanche.benchmarks.utils import AvalancheConcatDataset, AvalancheDataset
-from avalanche.training.plugins import StoragePolicy
 from avalanche.training.strategies import BaseStrategy
 
-from utils import create_instance, cutmix_data
-from modules import *
-from loss import *
+from ocl.memory import OnlineCLStorage
+from ocl.utils import create_instance, cutmix_data
+from ocl.modules import *
+from ocl.loss import *
 
 """
 A strategy pulgin can change the strategy parameters before and after 
