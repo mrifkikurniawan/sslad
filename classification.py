@@ -3,6 +3,7 @@ import torch
 import argparse
 import yaml
 from easydict import EasyDict as edict
+import os.path as osp
 
 from avalanche.benchmarks.scenarios.generic_benchmark_creation import create_multi_dataset_generic_benchmark
 from avalanche.evaluation.metrics import accuracy_metrics, loss_metrics, class_accuracy_metrics
@@ -50,6 +51,9 @@ def main():
     device = torch.device(f"cuda:{args.gpu_id}" if args.gpu_id >= 0 else "cpu")
     logger = SummaryWriter(log_dir=args.name, comment=args.comment)
     seed_everything(seed)
+    
+    # replace args.name
+    args.name = osp.join(osp.dirname(args.name), config.method.args.logger.args.name)
     
     # print configuration
     print("--------Configuration--------")
