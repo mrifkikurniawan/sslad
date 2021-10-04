@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-from torchsampler import ImbalancedDatasetSampler
 
 from avalanche.training.plugins.strategy_plugin import StrategyPlugin
 from avalanche.training.strategies import BaseStrategy
@@ -67,7 +66,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                  logger: object=None,
                  target_layer: str=None,
                  metric_learning: dict=None,
-                 embedding_dims: int=None):
+                 embedding_dims: int=None,
+                 memory_dataloader_sampler: dict=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -90,6 +90,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                                        self.embedding_dims)
         self.memory_dataloader = False
         self.ep_memory_batch_size = ep_memory_batch_size
+        self.sampler = create_instance(memory_dataloader_sampler)
         
         # augmentations
         self.cut_mix = cut_mix
@@ -146,7 +147,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                                                      batch_size=self.ep_memory_batch_size, 
                                                      shuffle=False,
                                                      num_workers=self.online_sampler.num_workers,
-                                                     sampler=ImbalancedDatasetSampler(self.storage.dataset)))
+                                                     sampler=self.sampler(self.storage.dataset)))
             
             
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
