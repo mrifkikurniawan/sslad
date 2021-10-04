@@ -15,6 +15,7 @@ from ocl.memory import OnlineCLStorage
 from ocl.utils import create_instance, cutmix_data
 from ocl.modules import *
 from ocl.loss import *
+from ocl.sampler import ClassAwareSampler
 
 """
 A strategy pulgin can change the strategy parameters before and after 
@@ -146,7 +147,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                                                      batch_size=self.ep_memory_batch_size, 
                                                      shuffle=False,
                                                      num_workers=self.online_sampler.num_workers,
-                                                     sampler=ImbalancedDatasetSampler(self.storage.dataset)))
+                                                     sampler=ClassAwareSampler(self.storage.dataset)))
             
             
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
