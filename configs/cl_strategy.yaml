@@ -98,6 +98,11 @@ method:
                 args:
                   temperature: 0.1
                 weight: 0.1
+        
+        # episodic memory dataloader sampler
+        memory_dataloader_sampler:
+          module: torchsampler
+          method: ImbalancedDatasetSampler
 
 
     logger:
