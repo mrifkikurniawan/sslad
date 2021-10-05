@@ -11,7 +11,7 @@ from avalanche.training.plugins.strategy_plugin import StrategyPlugin
 from avalanche.training.strategies import BaseStrategy
 
 from ocl.memory import OnlineCLStorage
-from ocl.utils import create_instance, cutmix_data
+from ocl.utils import create_instance
 from ocl.modules import *
 from ocl.loss import *
 
@@ -162,27 +162,11 @@ class ClassStrategyPlugin(StrategyPlugin):
                 strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
             except:
                 pass
-        
-        # cut mix augmentation if necessary
-        if self.cut_mix:
-            self.do_cutmix = self.cut_mix and np.random.rand(1) < self.cut_mix.probability
-            if self.do_cutmix:
-                strategy.mbatch[0], strategy.mbatch[1], labels_b, lambd = cutmix_data(x=strategy.mb_x, y=strategy.mb_y, alpha=self.cut_mix.alpha)
-                self.cutmix_out = dict(labels_b=labels_b,
-                                       lambd=lambd)
 
     def after_forward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
     def before_backward(self, strategy: 'BaseStrategy', **kwargs):
-        
-        # cut mix augmentation if necessary
-        if self.cut_mix:
-            if self.do_cutmix:
-                lambd = self.cutmix_out['lambd']
-                labels_b = self.cutmix_out['labels_b']
-                strategy.loss *= lambd
-                strategy.loss += (1 - lambd) * strategy._criterion(strategy.mb_output, labels_b)
 
         # soft labels learning
         if self.softlabels_trainer.train and self.memory_dataloader:
