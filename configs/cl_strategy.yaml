@@ -45,7 +45,6 @@ method:
         sweep_memory_every_n_iter: 1000
         memory_sweep_default_size: 500
         num_samples_per_batch: 5
-        cut_mix: False
         target_layer: global_pool
         ep_memory_batch_size: 6
         memory_transforms: [
@@ -107,6 +106,13 @@ method:
         memory_dataloader_sampler:
           module: torchsampler
           method: ImbalancedDatasetSampler
+        
+        # augmentation
+        augmentation:
+          module: ocl.modules
+          method: MixUp
+          args: 
+            alpha: 1.0
 
         # fine tune head
         finetune_head:
