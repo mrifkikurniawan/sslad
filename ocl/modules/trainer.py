@@ -88,6 +88,7 @@ class SoftLabelsLearningTrainer(object):
         self.kldiv_loss = KLDivLoss(temperature=self.temperature)
         self.softmaxt = SoftmaxT(temperature=self.temperature)
         self._train = False
+        self.milestone_idx = 0
     
     def configure_weight(self):
         if self.iteration == self.next_milestone:
