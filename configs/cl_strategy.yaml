@@ -119,9 +119,9 @@ method:
               module: torch.optim
               method: SGD
               args:
-                lr: 0.0111
+                lr: 0.0001
 
-            scheduler: None
+            scheduler: null
             layer_head: fc
 
             dataloader:
@@ -144,11 +144,11 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: ClassBalancedFocalLoss-sota
+        name: FinetuneHead
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, ClassBalancedFocalLoss, sota]
-        notes: ClassBalancedFocalLoss
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, ClassBalancedFocalLoss, FinetuneHead]
+        notes: FinetuneHead
 
 
 hparams_optimizer:
