@@ -8,7 +8,7 @@ from ocl.utils import get_batch_distribution
 
 class MixUp(object):
     def __init__(self, 
-                 alpha: float=None):
+                 alpha: float=1.0):
     
         self.alpha = alpha
         self.distribution = torch.distributions.beta.Beta(self.alpha, self.alpha)
@@ -46,9 +46,9 @@ class MixUp(object):
 
 class ReMix(object):
     def __init__(self, 
-                 alpha: float=None,
-                 tau: float=None,
-                 kappa: float=None):
+                 alpha: float=1.0,
+                 tau: float=3.0,
+                 kappa: float=0.5):
     
         self.alpha = alpha
         self.distribution = torch.distributions.beta.Beta(self.alpha, self.alpha)
@@ -108,7 +108,7 @@ class ReMix(object):
 
 class CutMix(object):
     def __init__(self, 
-                 alpha: float=None):
+                 alpha: float=1.0):
     
         self.alpha = alpha
         self.distribution = torch.distributions.beta.Beta(self.alpha, self.alpha)
