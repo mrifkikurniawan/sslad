@@ -57,7 +57,6 @@ class ClassStrategyPlugin(StrategyPlugin):
                  sweep_memory_every_n_iter: int=1000, 
                  memory_sweep_default_size: int=500,
                  num_samples_per_batch: int=5,
-                 cut_mix: Union[bool, dict]=False,
                  ep_memory_batch_size: int=6,
                  lr_scheduler: torch.optim.lr_scheduler=None,
                  logger: object=None,
@@ -67,7 +66,8 @@ class ClassStrategyPlugin(StrategyPlugin):
                  memory_dataloader_sampler: dict=None, 
                  finetune_head: dict=None,
                  model: nn.Module=None,
-                 softlabels_trainer: object=None):
+                 softlabels_trainer: object=None,
+                 augmentation: dict=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -93,9 +93,9 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.sampler = create_instance(memory_dataloader_sampler)
         
         # augmentations
-        self.cut_mix = cut_mix
-        if self.cut_mix:
-            self.cut_mix = edict(self.cut_mix)
+        self.augmentation = augmentation
+        if self.augmentation:
+            self.augmentation = create_instance(augmentation)
 
         # -------- Soft Labels --------
         self.softlabels_trainer = softlabels_trainer
@@ -211,6 +211,10 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def after_update(self, strategy: 'BaseStrategy', **kwargs):
+        
+        # train augmented images
+        if self.augmentation:
+            self.augmentation.step(strategy)
         
         # finetune model head
         if self.finetune_head:
