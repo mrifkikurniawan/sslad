@@ -1,7 +1,11 @@
+from typing import List, Dict
+
 import torch.nn as nn
 import torch
 
 from ocl.utils import create_instance
+from ocl.modules import SoftmaxT
+from ocl.loss import KLDivLoss
 
 class FinetuneHeadTrainer(object):
     def __init__(self,
@@ -67,3 +71,56 @@ class FinetuneHeadTrainer(object):
                 self.lr_scheduler.step()
         else:
             pass
+
+
+
+class SoftLabelsLearningTrainer(object):
+    def __init__(self, 
+                 patience: int=None,
+                 temperature: int=None,
+                 loss_weights: Dict[str, List[float]]=None):
+    
+        self.patience = patience
+        self.temperature = temperature
+        self.loss_weights = loss_weights
+        self.iteration = 0
+        self.next_milestone = self.loss_weights['milestones'][0]
+        self.kldiv_loss = KLDivLoss(temperature=self.temperature)
+        self.softmaxt = SoftmaxT(temperature=self.temperature)
+        self._train = False
+    
+    def configure_weight(self):
+        if self.iteration == self.next_milestone:
+            self.milestone_idx = self.loss_weights['milestones'].index(self.next_milestone)
+            self.current_milestone = self.next_milestone
+            last_milestone = self.loss_weights['milestones'][-1]
+            if self.current_milestone != last_milestone:
+                self.next_milestone = self.loss_weights['milestones'][self.milestone_idx+1]
+            print(f"Current milestone: {self.current_milestone}")
+            print(f"CE Loss: {self.loss_weights['cross_entropy'][self.milestone_idx]}")
+            print(f"KL Loss: {self.loss_weights['kl_divergence'][self.milestone_idx]}")
+    
+    def fit(self, predictions: torch.Tensor, targets: torch.Tensor):
+        if self.train:
+            self.configure_weight()
+            loss = torch.tensor(0.0).type_as(predictions)
+            softlabels = self.softmaxt(targets, act_f='softmax')
+            loss += self.kldiv_loss(logits=predictions, y=softlabels)
+            loss *= torch.tensor(self.loss_weights['kl_divergence'][self.milestone_idx]).type_as(loss)
+        else:
+            loss = torch.tensor(0.0).type_as(predictions)
+        return loss
+                
+    def step(self):
+        self.iteration += 1
+        if self.iteration == self.patience:
+            self._train = True
+            print("------- Starting Softlabels Learning -------")
+            
+    @property
+    def train(self):
+        return self._train
+    
+    @property
+    def ce_weights(self):
+        return self.loss_weights['cross_entropy'][self.milestone_idx]

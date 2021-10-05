@@ -60,16 +60,14 @@ class ClassStrategyPlugin(StrategyPlugin):
                  cut_mix: Union[bool, dict]=False,
                  ep_memory_batch_size: int=6,
                  lr_scheduler: torch.optim.lr_scheduler=None,
-                 temperature: float=0.5,
-                 loss_weights: dict=None,
-                 softlabels_patience: int=1000,
                  logger: object=None,
                  target_layer: str=None,
                  metric_learning: dict=None,
                  embedding_dims: int=None,
                  memory_dataloader_sampler: dict=None, 
                  finetune_head: dict=None,
-                 model: nn.Module=None):
+                 model: nn.Module=None,
+                 softlabels_trainer: object=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -100,17 +98,10 @@ class ClassStrategyPlugin(StrategyPlugin):
             self.cut_mix = edict(self.cut_mix)
 
         # -------- Soft Labels --------
-        self.softlabels_patience = softlabels_patience
-        self.softlabels_learning = False
-        # softmax temperature
-        self.temperature = temperature
-        self.softmaxt = SoftmaxT(temperature=self.temperature)
-        
-        # losses weights
-        self.kldiv_loss = KLDivLoss(temperature=self.temperature)
-        self.loss_weights = loss_weights
-        self.next_milestone = self.loss_weights['milestones'][0]
-        
+        self.softlabels_trainer = softlabels_trainer
+        if self.softlabels_trainer:
+            self.softlabels_trainer = create_instance(self.softlabels_trainer)
+                
         # logger
         self.logger = logger
         
@@ -194,25 +185,17 @@ class ClassStrategyPlugin(StrategyPlugin):
                 strategy.loss += (1 - lambd) * strategy._criterion(strategy.mb_output, labels_b)
 
         # soft labels learning
-        if self.softlabels_learning and self.memory_dataloader:
-            if self.current_itaration == self.next_milestone:
-                self.milestone_idx = self.loss_weights['milestones'].index(self.next_milestone)
-                self.current_milestone = self.next_milestone
-                last_milestone = self.loss_weights['milestones'][-1]
-                if self.current_milestone != last_milestone:
-                    self.next_milestone = self.loss_weights['milestones'][self.milestone_idx+1]
-                print(f"Current milestone: {self.current_milestone}")
-                print(f"CE Loss: {self.loss_weights['cross_entropy'][self.milestone_idx]}")
-                print(f"KL Loss: {self.loss_weights['kl_divergence'][self.milestone_idx]}")
-            
+        if self.softlabels_trainer.train and self.memory_dataloader:
             memory_batch_size = self.y_memory['logit'].shape[0]
             logits = strategy.mb_output[-memory_batch_size:]
-            softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
-            kl_loss = self.kldiv_loss(logits=logits, y=softlabels)
-
-            strategy.loss *= torch.tensor(self.loss_weights['cross_entropy'][self.milestone_idx]).type_as(strategy.loss)
-            strategy.loss += torch.tensor(self.loss_weights['kl_divergence'][self.milestone_idx]).type_as(strategy.loss) * kl_loss
-            
+            softlabels_loss = self.softlabels_trainer.fit(inputs=logits, targets=self.y_memory['logit'].type_as(logits))
+            strategy.loss *= torch.tensor(self.softlabels_trainer.ce_weights).type_as(strategy.loss)
+            strategy.loss += softlabels_loss
+        
+        # step softlabels trainer
+        if self.softlabels_trainer:
+            self.softlabels_trainer.step()
+         
         # metric learning
         if self.metric_learning:
             loss = self.metric_learner(embeddings=self.embeddings[self.target_layer].squeeze(), labels=strategy.mb_y)
@@ -261,9 +244,6 @@ class ClassStrategyPlugin(StrategyPlugin):
                 self.lr_scheduler.step()
         
         self.current_itaration += 1
-        if self.current_itaration == self.softlabels_patience:
-            self.softlabels_learning = True
-            print("------- Starting softlabels learning -------")
             
         # logging
         self.logger.log({"train/loss": strategy.loss.item()})
