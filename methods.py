@@ -42,7 +42,7 @@ class CLStrategy(object):
                                         }
                                   )
         self._plugins = create_instance(plugins, lr_scheduler=self._lr_scheduler, logger=self._logger,
-                                        embedding_dims=embedding_dims)
+                                        embedding_dims=embedding_dims, model=self._model)
     
     @property
     def model(self):
