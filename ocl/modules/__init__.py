@@ -4,3 +4,4 @@ from .forward_transfer import *
 from .metric_learning import *
 from .scoring import *
 from .trainer import *
+from .augmenter import *
