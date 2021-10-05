@@ -150,10 +150,10 @@ method:
       method: init
       args: 
         project: sslad-iccv-2021
-        name: FinetuneHead
+        name: FinetuneHead-sota
         entity: mrifkikurniawan
         save_code: True
-        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, ClassBalancedFocalLoss, FinetuneHead]
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, ClassBalancedFocalLoss, FinetuneHead, sota]
         notes: FinetuneHead
 
 
