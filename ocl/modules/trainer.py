@@ -8,7 +8,7 @@ class FinetuneHeadTrainer(object):
                  criterion: dict=None,
                  optimizer: dict=None,
                  model: nn.Module=None,
-                 scheduler: dict=None,
+                 lr_scheduler: dict=None,
                  layer_head: str="fc",
                  dataloader: dict=None,
                  dataloader_sampler: dict=None) -> None:
@@ -21,10 +21,10 @@ class FinetuneHeadTrainer(object):
         self.dataset = None
         self.dataloader_cfg = dataloader
         self.dataloader_sampler_cfg = dataloader_sampler
-        self.scheduler = scheduler
+        self.lr_scheduler = lr_scheduler
         
-        if self.scheduler:
-            self.scheduler = create_instance(scheduler)
+        if self.lr_scheduler:
+            self.lr_scheduler = create_instance(lr_scheduler)
         
     def load_dataset(self, dataset: torch.utils.data.Dataset) -> None:
         self.dataset = dataset
@@ -56,7 +56,7 @@ class FinetuneHeadTrainer(object):
             self.optimizer.step()
             
             # scheduler
-            if self.scheduler:
-                self.scheduler.step()
+            if self.lr_scheduler:
+                self.lr_scheduler.step()
         else:
             pass
