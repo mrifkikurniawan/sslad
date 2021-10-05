@@ -67,7 +67,9 @@ class ClassStrategyPlugin(StrategyPlugin):
                  target_layer: str=None,
                  metric_learning: dict=None,
                  embedding_dims: int=None,
-                 memory_dataloader_sampler: dict=None):
+                 memory_dataloader_sampler: dict=None, 
+                 finetune_head: dict=None,
+                 model: nn.Module=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -117,6 +119,11 @@ class ClassStrategyPlugin(StrategyPlugin):
         if self.metric_learning:
             self.handlers = list()
             self.metric_learner = create_instance(self.metric_learning)
+            
+        # finetune head
+        self.finetune_head = finetune_head
+        if self.finetune_head:
+            self.finetune_head = create_instance(finetune_head, model=model)
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -148,6 +155,10 @@ class ClassStrategyPlugin(StrategyPlugin):
                                                      shuffle=False,
                                                      num_workers=self.online_sampler.num_workers,
                                                      sampler=self.sampler(self.storage.dataset)))
+            
+            if self.finetune_head:
+                self.finetune_head.load_dataset(self.storage.dataset)
+                self.finetune_head.prepare_dataloader()
             
             
     def before_forward(self, strategy: 'BaseStrategy', **kwargs):
@@ -217,6 +228,10 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def after_update(self, strategy: 'BaseStrategy', **kwargs):
+        
+        # finetune model head
+        if self.finetune_head:
+            self.finetune_head.step()
         
         # get model, current batch images and targets 
         model = strategy.model
