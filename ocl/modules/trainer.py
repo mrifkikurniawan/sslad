@@ -20,7 +20,8 @@ class FinetuneHeadTrainer(object):
         self.optimizer = create_instance(optimizer, params=self.model_head.parameters())
         self.dataset = None
         self.dataloader_cfg = dataloader
-        self.dataloader_sampler = dataloader_sampler
+        self.dataloader_sampler_cfg = dataloader_sampler
+        self.scheduler = scheduler
         
         if self.scheduler:
             self.scheduler = create_instance(scheduler)
@@ -32,28 +33,30 @@ class FinetuneHeadTrainer(object):
         assert self.dataset is not None, "Dataset not loaded"
         
         # prepare dataloader sampler
-        if self.dataloader_sampler:
-            self.dataloader_sampler = create_instance(self.dataloader_sampler, dataset=self.dataset)
+        self.dataloader_sampler = create_instance(self.dataloader_sampler_cfg, dataset=self.dataset) if self.dataloader_sampler_cfg else None
         self.dataloader = iter(create_instance(self.dataloader_cfg, 
                                                dataset=self.dataset,
                                                sampler=self.dataloader_sampler))
         
     def step(self, **kwargs):
-        
-        # set default values for training
-        self.optimizer.zero_grad()
-        loss = torch.tensor(0.0).to(self.model.device)
-        
-        # pass forward
-        x, y = self.dataloader.next()
-        x, y = x.to(self.model.device), y['label'].to(self.model.device)
-        logits = self.model(x, **kwargs)
-        loss += self.criterion(logits, y)
-        
-        # backward
-        loss.backward()
-        self.optimizer.step()
-        
-        # scheduler
-        if self.scheduler:
-            self.scheduler.step()
+        if hasattr(self, 'dataloader'):
+            # set default values for training
+            self.optimizer.zero_grad()
+            device = next(self.model.parameters()).device
+            loss = torch.tensor(0.0).to(device)
+            
+            # pass forward
+            x, y = self.dataloader.next()
+            x, y = x.to(device), y['label'].to(device)
+            logits = self.model(x, **kwargs)
+            loss += self.criterion(logits, y)
+            
+            # backward
+            loss.backward()
+            self.optimizer.step()
+            
+            # scheduler
+            if self.scheduler:
+                self.scheduler.step()
+        else:
+            pass
