@@ -36,7 +36,7 @@ class MixUp(object):
         
         # weighting the loss
         strategy.loss = torch.tensor(0.0).type_as(strategy.loss)
-        strategy.loss +=  self.lambd * strategy.criterion(logits, self.label_a) +  (1 - self.lambd) * strategy.criterion(logits, self.label_b)
+        strategy.loss +=  self.lambd * strategy._criterion(logits, self.label_a) +  (1 - self.lambd) * strategy._criterion(logits, self.label_b)
         
         # backward
         strategy.loss.backward()
@@ -93,9 +93,9 @@ class ReMix(object):
         strategy.loss = torch.tensor(0.0).type_as(strategy.loss)
         
         strategy.criterion.weight = weights
-        strategy.loss +=  strategy.criterion(logits, self.label_a)
+        strategy.loss +=  strategy._criterion(logits, self.label_a)
         strategy.criterion.weight = 1 - weights
-        strategy.loss += strategy.criterion(logits, self.label_b)
+        strategy.loss += strategy._criterion(logits, self.label_b)
         
         # backward
         strategy.loss.backward()
@@ -140,7 +140,7 @@ class CutMix(object):
         
         # weighting the loss
         strategy.loss = torch.tensor(0.0).type_as(strategy.loss)
-        strategy.loss +=  self.lambd * strategy.criterion(logits, self.label_a) +  (1 - self.lambd) * strategy.criterion(logits, self.label_b)
+        strategy.loss +=  self.lambd * strategy._criterion(logits, self.label_a) +  (1 - self.lambd) * strategy._criterion(logits, self.label_b)
         
         # backward
         strategy.loss.backward()
