@@ -188,7 +188,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         if self.softlabels_trainer.train and self.memory_dataloader:
             memory_batch_size = self.y_memory['logit'].shape[0]
             logits = strategy.mb_output[-memory_batch_size:]
-            softlabels_loss = self.softlabels_trainer.fit(inputs=logits, targets=self.y_memory['logit'].type_as(logits))
+            softlabels_loss = self.softlabels_trainer.fit(predictions=logits, targets=self.y_memory['logit'].type_as(logits))
             strategy.loss *= torch.tensor(self.softlabels_trainer.ce_weights).type_as(strategy.loss)
             strategy.loss += softlabels_loss
         
