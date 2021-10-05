@@ -15,7 +15,8 @@ class FinetuneHeadTrainer(object):
                  lr_scheduler: dict=None,
                  layer_head: str="fc",
                  dataloader: dict=None,
-                 dataloader_sampler: dict=None) -> None:
+                 dataloader_sampler: dict=None,
+                 softlabels_trainer: dict=None) -> None:
         
         self.criterion = create_instance(criterion)
         self.model = model
@@ -26,9 +27,13 @@ class FinetuneHeadTrainer(object):
         self.dataloader_cfg = dataloader
         self.dataloader_sampler_cfg = dataloader_sampler
         self.lr_scheduler = lr_scheduler
+        self.softlabels_trainer = softlabels_trainer
         
         if self.lr_scheduler:
             self.lr_scheduler = create_instance(lr_scheduler, optimizer=self.optimizer)
+        
+        if self.softlabels_trainer:
+            self.softlabels_trainer = create_instance(self.softlabels_trainer)
         
     def load_dataset(self, dataset: torch.utils.data.Dataset) -> None:
         self.dataset = dataset
@@ -58,9 +63,16 @@ class FinetuneHeadTrainer(object):
                 self.dataset_iter = iter(self.dataloader)
                 x, y = self.dataset_iter.next()
                 
-            x, y = x.to(device), y['label'].to(device)
+            x, y, y_logits = x.to(device), y['label'].to(device), y['logit'].to(device)
             logits = self.model(x, **kwargs)
+            
+            # softlabels training
             loss += self.criterion(logits, y)
+            if self.softlabels_trainer:
+                if self.softlabels_trainer.train:
+                    loss *= torch.tensor(self.softlabels_trainer.ce_weights).type_as(loss)
+                    loss += self.softlabels_trainer.fit(logits, y_logits)
+                    self.softlabels_trainer.step()
             
             # backward
             loss.backward()
@@ -70,6 +82,7 @@ class FinetuneHeadTrainer(object):
             if self.lr_scheduler:
                 self.lr_scheduler.step()
         else:
+            self.softlabels_trainer.step()
             pass
 
 
