@@ -24,7 +24,7 @@ class FinetuneHeadTrainer(object):
         self.lr_scheduler = lr_scheduler
         
         if self.lr_scheduler:
-            self.lr_scheduler = create_instance(lr_scheduler)
+            self.lr_scheduler = create_instance(lr_scheduler, optimizer=self.optimizer)
         
     def load_dataset(self, dataset: torch.utils.data.Dataset) -> None:
         self.dataset = dataset
@@ -34,9 +34,10 @@ class FinetuneHeadTrainer(object):
         
         # prepare dataloader sampler
         self.dataloader_sampler = create_instance(self.dataloader_sampler_cfg, dataset=self.dataset) if self.dataloader_sampler_cfg else None
-        self.dataloader = iter(create_instance(self.dataloader_cfg, 
-                                               dataset=self.dataset,
-                                               sampler=self.dataloader_sampler))
+        self.dataloader = create_instance(self.dataloader_cfg, 
+                                          dataset=self.dataset,
+                                          sampler=self.dataloader_sampler)
+        self.dataset_iter = iter(self.dataloader)
         
     def step(self, **kwargs):
         if hasattr(self, 'dataloader'):
@@ -46,7 +47,13 @@ class FinetuneHeadTrainer(object):
             loss = torch.tensor(0.0).to(device)
             
             # pass forward
-            x, y = self.dataloader.next()
+            try:
+                x, y = self.dataset_iter.next()
+            except StopIteration:
+                # reinitialize dataloader
+                self.dataset_iter = iter(self.dataloader)
+                x, y = self.dataset_iter.next()
+                
             x, y = x.to(device), y['label'].to(device)
             logits = self.model(x, **kwargs)
             loss += self.criterion(logits, y)
