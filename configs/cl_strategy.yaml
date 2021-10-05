@@ -121,7 +121,13 @@ method:
               args:
                 lr: 0.0001
 
-            scheduler: null
+            lr_scheduler:
+              module: torch.optim.lr_scheduler
+              method: MultiStepLR
+              args: 
+                milestones : [1000, 2000]
+                gamma: 0.1
+                
             layer_head: fc
 
             dataloader:
