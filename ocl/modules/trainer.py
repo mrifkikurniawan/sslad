@@ -33,7 +33,7 @@ class FinetuneHeadTrainer(object):
         
         # prepare dataloader sampler
         if self.dataloader_sampler:
-            self.dataloader_sampler = create_instance(self.dataloader_sampler)
+            self.dataloader_sampler = create_instance(self.dataloader_sampler, dataset=self.dataset)
         self.dataloader = iter(create_instance(self.dataloader_cfg, 
                                                dataset=self.dataset,
                                                sampler=self.dataloader_sampler))
