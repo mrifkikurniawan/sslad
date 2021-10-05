@@ -72,7 +72,7 @@ class FinetuneHeadTrainer(object):
                 if self.softlabels_trainer.train:
                     loss *= torch.tensor(self.softlabels_trainer.ce_weights).type_as(loss)
                     loss += self.softlabels_trainer.fit(logits, y_logits)
-                    self.softlabels_trainer.step()
+                self.softlabels_trainer.step()
             
             # backward
             loss.backward()
