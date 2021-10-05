@@ -104,6 +104,40 @@ method:
           module: torchsampler
           method: ImbalancedDatasetSampler
 
+        # fine tune head
+        finetune_head:
+          module: ocl.modules
+          method: FinetuneHeadTrainer
+          args:
+            criterion:
+              module: torch.nn 
+              method: CrossEntropyLoss
+              args:
+                reduction: mean
+
+            optimizer:
+              module: torch.optim
+              method: SGD
+              args:
+                lr: 0.0111
+
+            scheduler: None
+            layer_head: fc
+
+            dataloader:
+              module: torch.utils.data
+              method: DataLoader
+              args:
+                batch_size: 6
+                shuffle: False
+                num_workers: 8
+                drop_last: True
+
+            dataloader_sampler:
+              module: ocl.sampler
+              method: ClassAwareSampler
+              args: 
+                sample_per_class: 1
 
     logger:
       module: wandb
