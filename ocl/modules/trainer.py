@@ -166,6 +166,8 @@ class SelfSupervisedTrainer(nn.Module):
         self.targets_tranforms = targets_tranforms
         self.num_workers = num_workers 
         self.feed_targets_to_model = feed_targets_to_model
+        self.handlers = list()
+        self._register_forward_hook()
 
         if self.train:
             self.head = create_instance(head)
@@ -202,16 +204,16 @@ class SelfSupervisedTrainer(nn.Module):
         if self.feed_targets_to_model:
             self.features_out = dict()
             self.logits_x = self.model(x.to(self.device))       
-            self.preds = self.features[self.target_layer]
+            self.preds = self.embeddings[self.target_layer]
             self.logits_y = self.model(self.y.to(self.device))
-            self.y = self.features[self.target_layer]
+            self.y = self.embeddings[self.target_layer]
             
             assert self.preds != self.y
         
         else:
             self.logits_x = self.model(x.to(self.device))
             self.logits_y = None
-            self.preds = self.features[self.target_layer]
+            self.preds = self.embeddings[self.target_layer]
                 
     def adapt(self, inputs: torch.Tensor):
         '''Using Test-time adaptation'''
@@ -225,3 +227,21 @@ class SelfSupervisedTrainer(nn.Module):
         self.optimizer.step()
         self.model.eval()
         
+    def _register_forward_hook(self):
+        self.embeddings = dict()
+        def get_features(key):
+            def forward_hook(module, input, output):
+                self.embeddings[key] = output
+            return forward_hook
+        
+        # add forward hook 
+        for name, module in self.model.named_modules():
+            if self.target_layer == name:
+                self.handlers.append(module.register_forward_hook(get_features(key=name)))
+                
+    def remove_hook(self):
+        """
+        Remove all the forward/backward hook functions
+        """
+        for handle in self.handlers:
+            handle.remove() 
