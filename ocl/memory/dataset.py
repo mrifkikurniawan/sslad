@@ -67,3 +67,37 @@ class MemoryDataset(Dataset):
             targets = self.target_transform(targets)
         
         return inputs, targets
+
+
+
+class SSLDataset(Dataset):
+    def __init__(self, 
+                 inputs: torch.Tensor, 
+                 transform: callable=None, 
+                 target_transform: list=None):
+              
+        inputs_ = [_default_inverse_transform(img) for img in inputs]
+        self._inputs = inputs_
+        self.transform = transform
+        self.target_transform = target_transform
+    
+    @property
+    def inputs(self):
+        return self._inputs
+    
+    @property
+    def targets(self):
+        return self._targets
+    
+    def __len__(self):
+        return len(self.targets)
+    
+    def __getitem__(self, index):
+        inputs = self._inputs[index]
+        
+        if self.transform is not None:
+            inputs = self.transform(inputs)
+        if self.target_transform is not None:
+            targets = self.target_transform(inputs)
+        
+        return inputs, targets

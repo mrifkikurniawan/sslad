@@ -1,9 +1,12 @@
-from typing import List, Dict
+from typing import List, Dict, Union
 
 import torch.nn as nn
 import torch
+from torch.utils.data import DataLoader
+from avalanche.training.strategies import BaseStrategy
 
 from ocl.utils import create_instance
+from ocl.memory import SSLDataset
 from ocl.modules import SoftmaxT
 from ocl.loss import KLDivLoss
 
@@ -138,3 +141,108 @@ class SoftLabelsLearningTrainer(object):
     @property
     def ce_weights(self):
         return self.loss_weights['cross_entropy'][self.milestone_idx]
+
+
+
+class SelfSupervisedTrainer(nn.Module):
+    def __init__(self, 
+                 model: nn.Module=None,
+                 head: dict=None,
+                 target_layer: str=None,
+                 criterion: dict=None,
+                 optimizer: dict=None,
+                 lr_scheduler: dict=None,
+                 train_individually: bool=False,
+                 inputs_tranforms: str=None,
+                 targets_tranforms: str=None,
+                 train: bool=True,
+                 num_workers: int=8,
+                 feed_targets_to_model: bool=True
+                 ):
+        super().__init__()
+        self.model = model
+        self.target_layer = target_layer
+        self.inputs_tranforms = inputs_tranforms
+        self.targets_tranforms = targets_tranforms
+        self.num_workers = num_workers 
+        self.feed_targets_to_model = feed_targets_to_model
+        self.handlers = list()
+        self._register_forward_hook()
+
+        if self.train:
+            print("------ Self-Supervised Learning ------")
+            self.head = create_instance(head)
+            self.criterion = create_instance(criterion)
+            self.optimizer = create_instance(optimizer, params=list(self.model.parameters()) + list(self.head.parameters()))
+            self.lr_scheduler = create_instance(lr_scheduler)
+            self.train_individually = train_individually
+            self.train = train
+        
+    def fit(self, strategy: BaseStrategy) -> None:
+        self.device = next(strategy.model.parameters()).device
+        if self.train:
+            inputs = strategy.mbatch[0]
+            self.prepare_dataloader(inputs)
+            self.forward()            
+            loss = self.criterion(self.preds, self.y)           
+            
+            if self.train_individually:
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+            else:
+                strategy.loss += loss    
+        else:
+            pass
+    
+    def prepare_dataloader(self, inputs: torch.Tensor) -> None:
+        batch_size = inputs.shape[0]
+        dataset = SSLDataset(inputs, self.inputs_tranforms, self.targets_tranforms)
+        self.dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
+        
+    def forward(self) -> None:
+        x, self.y = self.dataloader.next()
+        if self.feed_targets_to_model:
+            self.features_out = dict()
+            self.logits_x = self.model(x.to(self.device))       
+            self.preds = self.embeddings[self.target_layer]
+            self.logits_y = self.model(self.y.to(self.device))
+            self.y = self.embeddings[self.target_layer]
+            
+            assert self.preds != self.y
+        
+        else:
+            self.logits_x = self.model(x.to(self.device))
+            self.logits_y = None
+            self.preds = self.embeddings[self.target_layer]
+                
+    def adapt(self, inputs: torch.Tensor) -> None:
+        '''Using Test-time adaptation'''
+        
+        self.optimizer.zero_grad()
+        self.model.train()
+        self.prepare_dataloader(inputs)
+        self.forward()
+        loss = self.criterion(self.preds, self.y)
+        loss.backward()
+        self.optimizer.step()
+        self.model.eval()
+        
+    def _register_forward_hook(self) -> None:
+        self.embeddings = dict()
+        def get_features(key):
+            def forward_hook(module, input, output):
+                self.embeddings[key] = output
+            return forward_hook
+        
+        # add forward hook 
+        for name, module in self.model.named_modules():
+            if self.target_layer == name:
+                self.handlers.append(module.register_forward_hook(get_features(key=name)))
+                
+    def remove_hook(self) -> None:
+        """
+        Remove all the forward/backward hook functions
+        """
+        for handle in self.handlers:
+            handle.remove() 

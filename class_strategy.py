@@ -4,6 +4,7 @@ import numpy as np
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
@@ -67,7 +68,10 @@ class ClassStrategyPlugin(StrategyPlugin):
                  finetune_head: dict=None,
                  model: nn.Module=None,
                  softlabels_trainer: object=None,
-                 augmentation: dict=None):
+                 augmentation: dict=None,
+                 self_supervised_training: dict=None,
+                 self_supervised_adaptation: bool=False,
+                 additional_classifier: dict=None):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -77,6 +81,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.num_samples_per_batch = num_samples_per_batch
         self.target_layer = target_layer
         self.embedding_dims = embedding_dims
+        self.preds_thresh = 0.5
         
         # lr scheduler
         self.lr_scheduler = lr_scheduler
@@ -115,6 +120,19 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.finetune_head = finetune_head
         if self.finetune_head:
             self.finetune_head = create_instance(finetune_head, model=model)
+            
+        # self supervised learning
+        self.self_supervised_training = self_supervised_training
+        if self.self_supervised_training:
+            self.self_supervised_training = create_instance(self_supervised_training)
+            
+        # ssl adaptation
+        self.self_supervised_adaptation = self_supervised_adaptation
+        
+        # additional classifier
+        self.additional_classifier = additional_classifier
+        if additional_classifier:
+            self.additional_classifier = create_instance(additional_classifier) 
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -162,7 +180,9 @@ class ClassStrategyPlugin(StrategyPlugin):
                 strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
             except:
                 pass
-
+        if self.self_supervised_training:
+            self.self_supervised_training.fit(strategy)
+            
     def after_forward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
@@ -247,7 +267,27 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def before_eval(self, strategy: 'BaseStrategy', **kwargs):
-        pass
+        
+        # pass forward to get embeddings
+        if self.additional_classifier:
+            self._register_forward_hook(strategy.model)
+            self.model.eval()
+            with torch.no_grad:
+                len_memory = len(self.storage)
+                memory_dataloader = DataLoader(self.storage.dataset, 
+                                                batch_size=self.ep_memory_batch_size, 
+                                                shuffle=False,
+                                                num_workers=self.online_sampler.num_workers)
+                memory_embbedings = torch.zeros(len_memory, 2048)
+                memory_labels = torch.zeros(len_memory)
+                
+                for x, y in memory_dataloader:
+                    logits = self.model(x.type_as(next(self.model.parameters())))
+                    curr_bs = logits.shape[0]
+                    memory_embbedings[:curr_bs] = self.embeddings[self.target_layer].detach().clone()
+                    memory_labels[:curr_bs] = y.detach().clone()
+                    
+            self.additional_classifier.update(memory_embbedings, memory_labels)
 
     def before_eval_dataset_adaptation(self, strategy: 'BaseStrategy',
                                        **kwargs):
@@ -272,8 +312,17 @@ class ClassStrategyPlugin(StrategyPlugin):
         pass
 
     def after_eval_forward(self, strategy: 'BaseStrategy', **kwargs):
-        pass
-
+        if self.additional_classifier:
+            preds = F.softmax(strategy.mb_output, dim=0)
+            uncertain_indices = (preds < self.preds_thresh).nonzero()
+            if list(uncertain_indices) != []:
+                uncertain_preds_embeddings = self.embeddings[self.target_layer][uncertain_indices]
+                logits = self.additional_classifier(uncertain_preds_embeddings)
+                strategy.mb_output[uncertain_indices] = logits
+            else:
+                pass
+        
+        
     def after_eval_iteration(self, strategy: 'BaseStrategy', **kwargs):
         pass
     
