@@ -170,6 +170,7 @@ class SelfSupervisedTrainer(nn.Module):
         self._register_forward_hook()
 
         if self.train:
+            print("------ Self-Supervised Learning ------")
             self.head = create_instance(head)
             self.criterion = create_instance(criterion)
             self.optimizer = create_instance(optimizer)
@@ -177,7 +178,7 @@ class SelfSupervisedTrainer(nn.Module):
             self.train_individually = train_individually
             self.train = train
         
-    def fit(self, strategy: BaseStrategy) -> Union[None, float]:
+    def fit(self, strategy: BaseStrategy) -> None:
         self.device = next(strategy.model.parameters()).device
         if self.train:
             inputs = strategy.mbatch[0]
@@ -194,12 +195,12 @@ class SelfSupervisedTrainer(nn.Module):
         else:
             pass
     
-    def prepare_dataloader(self, inputs: torch.Tensor):
+    def prepare_dataloader(self, inputs: torch.Tensor) -> None:
         batch_size = inputs.shape[0]
         dataset = SSLDataset(inputs, self.inputs_tranforms, self.targets_tranforms)
         self.dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
         
-    def forward(self):
+    def forward(self) -> None:
         x, self.y = self.dataloader.next()
         if self.feed_targets_to_model:
             self.features_out = dict()
@@ -215,7 +216,7 @@ class SelfSupervisedTrainer(nn.Module):
             self.logits_y = None
             self.preds = self.embeddings[self.target_layer]
                 
-    def adapt(self, inputs: torch.Tensor):
+    def adapt(self, inputs: torch.Tensor) -> None:
         '''Using Test-time adaptation'''
         
         self.optimizer.zero_grad()
@@ -227,7 +228,7 @@ class SelfSupervisedTrainer(nn.Module):
         self.optimizer.step()
         self.model.eval()
         
-    def _register_forward_hook(self):
+    def _register_forward_hook(self) -> None:
         self.embeddings = dict()
         def get_features(key):
             def forward_hook(module, input, output):
@@ -239,7 +240,7 @@ class SelfSupervisedTrainer(nn.Module):
             if self.target_layer == name:
                 self.handlers.append(module.register_forward_hook(get_features(key=name)))
                 
-    def remove_hook(self):
+    def remove_hook(self) -> None:
         """
         Remove all the forward/backward hook functions
         """
