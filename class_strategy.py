@@ -67,7 +67,9 @@ class ClassStrategyPlugin(StrategyPlugin):
                  finetune_head: dict=None,
                  model: nn.Module=None,
                  softlabels_trainer: object=None,
-                 augmentation: dict=None):
+                 augmentation: dict=None,
+                 self_supervised_training: dict=None,
+                 self_supervised_adaptation: bool=False):
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
@@ -115,6 +117,14 @@ class ClassStrategyPlugin(StrategyPlugin):
         self.finetune_head = finetune_head
         if self.finetune_head:
             self.finetune_head = create_instance(finetune_head, model=model)
+            
+        # self supervised learning
+        self.self_supervised_training = self_supervised_training
+        if self.self_supervised_training:
+            self.self_supervised_training = create_instance(self_supervised_training)
+            
+        # ssl adaptation
+        self.self_supervised_adaptation = self_supervised_adaptation
 
     def before_training(self, strategy: 'BaseStrategy', **kwargs):
         pass
@@ -162,7 +172,9 @@ class ClassStrategyPlugin(StrategyPlugin):
                 strategy.mbatch[1] = torch.cat([strategy.mb_y, y_memory], dim=0)
             except:
                 pass
-
+        if self.self_supervised_training:
+            self.self_supervised_training.fit(strategy)
+            
     def after_forward(self, strategy: 'BaseStrategy', **kwargs):
         pass
 
