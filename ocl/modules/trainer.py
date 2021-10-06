@@ -173,7 +173,7 @@ class SelfSupervisedTrainer(nn.Module):
             print("------ Self-Supervised Learning ------")
             self.head = create_instance(head)
             self.criterion = create_instance(criterion)
-            self.optimizer = create_instance(optimizer)
+            self.optimizer = create_instance(optimizer, params=list(self.model.parameters()) + list(self.head.parameters()))
             self.lr_scheduler = create_instance(lr_scheduler)
             self.train_individually = train_individually
             self.train = train
