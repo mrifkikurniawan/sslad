@@ -113,6 +113,18 @@ method:
           method: MixUp
           args: 
             alpha: 1.0
+            optimizer:
+              module: torch.optim
+              method: SGD
+              args:
+                lr: 0.0001
+            lr_scheduler:
+              module: torch.optim.lr_scheduler
+              method: MultiStepLR
+              args: 
+                milestones : [1000, 2000]
+                gamma: 0.1
+
 
         # fine tune head
         finetune_head:
