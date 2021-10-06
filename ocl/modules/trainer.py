@@ -1,9 +1,12 @@
-from typing import List, Dict
+from typing import List, Dict, Union
 
 import torch.nn as nn
 import torch
+from torch.utils.data import DataLoader
+from avalanche.training.strategies import BaseStrategy
 
 from ocl.utils import create_instance
+from ocl.memory import SSLDataset
 from ocl.modules import SoftmaxT
 from ocl.loss import KLDivLoss
 
@@ -138,3 +141,87 @@ class SoftLabelsLearningTrainer(object):
     @property
     def ce_weights(self):
         return self.loss_weights['cross_entropy'][self.milestone_idx]
+
+
+
+class SelfSupervisedTrainer(nn.Module):
+    def __init__(self, 
+                 model: nn.Module=None,
+                 head: dict=None,
+                 target_layer: str=None,
+                 criterion: dict=None,
+                 optimizer: dict=None,
+                 lr_scheduler: dict=None,
+                 train_individually: bool=False,
+                 inputs_tranforms: str=None,
+                 targets_tranforms: str=None,
+                 train: bool=True,
+                 num_workers: int=8,
+                 feed_targets_to_model: bool=True
+                 ):
+        super().__init__()
+        self.model = model
+        self.target_layer = target_layer
+        self.inputs_tranforms = inputs_tranforms
+        self.targets_tranforms = targets_tranforms
+        self.num_workers = num_workers 
+        self.feed_targets_to_model = feed_targets_to_model
+
+        if self.train:
+            self.head = create_instance(head)
+            self.criterion = create_instance(criterion)
+            self.optimizer = create_instance(optimizer)
+            self.lr_scheduler = create_instance(lr_scheduler)
+            self.train_individually = train_individually
+            self.train = train
+        
+    def fit(self, strategy: BaseStrategy) -> Union[None, float]:
+        self.device = next(strategy.model.parameters()).device
+        if self.train:
+            inputs = strategy.mbatch[0]
+            self.prepare_dataloader(inputs)
+            self.forward()            
+            loss = self.criterion(self.preds, self.y)           
+            
+            if self.train_individually:
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+            else:
+                strategy.loss += loss    
+        else:
+            pass
+    
+    def prepare_dataloader(self, inputs: torch.Tensor):
+        batch_size = inputs.shape[0]
+        dataset = SSLDataset(inputs, self.inputs_tranforms, self.targets_tranforms)
+        self.dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=self.num_workers)
+        
+    def forward(self):
+        x, self.y = self.dataloader.next()
+        if self.feed_targets_to_model:
+            self.features_out = dict()
+            self.logits_x = self.model(x.to(self.device))       
+            self.preds = self.features[self.target_layer]
+            self.logits_y = self.model(self.y.to(self.device))
+            self.y = self.features[self.target_layer]
+            
+            assert self.preds != self.y
+        
+        else:
+            self.logits_x = self.model(x.to(self.device))
+            self.logits_y = None
+            self.preds = self.features[self.target_layer]
+                
+    def adapt(self, inputs: torch.Tensor):
+        '''Using Test-time adaptation'''
+        
+        self.optimizer.zero_grad()
+        self.model.train()
+        self.prepare_dataloader(inputs)
+        self.forward()
+        loss = self.criterion(self.preds, self.y)
+        loss.backward()
+        self.optimizer.step()
+        self.model.eval()
+        
