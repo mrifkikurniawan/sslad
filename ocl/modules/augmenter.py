@@ -92,9 +92,9 @@ class ReMix(object):
         # weighting the loss
         strategy.loss = torch.tensor(0.0).type_as(strategy.loss)
         
-        strategy.criterion.weight = weights
+        strategy._criterion.weight = weights
         strategy.loss +=  strategy._criterion(logits, self.label_a)
-        strategy.criterion.weight = 1 - weights
+        strategy._criterion.weight = 1 - weights
         strategy.loss += strategy._criterion(logits, self.label_b)
         
         # backward
@@ -102,7 +102,7 @@ class ReMix(object):
         strategy.optimizer.step()
         
         # reset criterion weights
-        strategy.criterion.weight = None
+        strategy._criterion.weight = None
 
 
 
@@ -139,23 +139,23 @@ class CutMix(object):
         logits = strategy.model(self.mixed_image)
         
         # weighting the loss
-        strategy.loss = torch.tensor(0.0).type_as(strategy.loss)
+        strategy.loss = torch.tensor([0.0]).type_as(strategy.loss)
         strategy.loss +=  self.lambd * strategy._criterion(logits, self.label_a) +  (1 - self.lambd) * strategy._criterion(logits, self.label_b)
         
         # backward
         strategy.loss.backward()
         strategy.optimizer.step()
     
-    def _rand_bbox(size: torch.Tensor, lam: torch.Tensor):
-        W = torch.tensor(size[2])
-        H = torch.tensor(size[3])
+    def _rand_bbox(self, size: torch.Tensor, lam: torch.Tensor):
+        W = torch.tensor(size[2]).to(lam.device)
+        H = torch.tensor(size[3]).to(lam.device)
         cut_rat = torch.sqrt(1.0 - lam)
         cut_w = (W * cut_rat).int()
         cut_h = (H * cut_rat).int()
 
         # uniform
-        cx = torch.randint(0, W, (1, ))
-        cy = torch.randint(0, H, (1, ))
+        cx = torch.randint(0, W, (1, )).to(lam.device)
+        cy = torch.randint(0, H, (1, )).to(lam.device)
 
         bbx1 = torch.clamp(cx - cut_w // 2, 0, W)
         bby1 = torch.clamp(cy - cut_h // 2, 0, H)
