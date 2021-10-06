@@ -3,13 +3,28 @@ import torch
 import torch.nn as nn
 from avalanche.training.strategies import BaseStrategy
 
-from ocl.utils import get_batch_distribution
+from ocl.utils import get_batch_distribution, create_instance
 
 
-class MixUp(object):
+class Augmenter(object):
+    def __init__(self,
+                 model: nn.Module=None,
+                 optimizer: dict=None,
+                 scheduler: dict=None):
+        
+        self.optimizer = create_instance(optimizer, params=model.parameters())
+        self.scheduler = create_instance(scheduler, optimizer=self.optimizer)
+        
+        
+        
+class MixUp(Augmenter):
     def __init__(self, 
-                 alpha: float=1.0):
-    
+                 alpha: float=1.0,
+                 model: nn.Module=None,
+                 optimizer: dict=None,
+                 scheduler: dict=None):
+        super().__init__(model, optimizer, scheduler)
+        
         self.alpha = alpha
         self.distribution = torch.distributions.beta.Beta(self.alpha, self.alpha)
         
@@ -40,15 +55,20 @@ class MixUp(object):
         
         # backward
         strategy.loss.backward()
-        strategy.optimizer.step()
+        self.optimizer.step()
+        self.scheduler.step()
 
 
 
-class ReMix(object):
+class ReMix(Augmenter):
     def __init__(self, 
                  alpha: float=1.0,
                  tau: float=3.0,
-                 kappa: float=0.5):
+                 kappa: float=0.5,
+                 model: nn.Module=None,
+                 optimizer: dict=None,
+                 scheduler: dict=None):
+        super().__init__(model, optimizer, scheduler)
     
         self.alpha = alpha
         self.distribution = torch.distributions.beta.Beta(self.alpha, self.alpha)
@@ -99,17 +119,21 @@ class ReMix(object):
         
         # backward
         strategy.loss.backward()
-        strategy.optimizer.step()
+        self.optimizer.step()
+        self.scheduler.step()
         
         # reset criterion weights
         strategy._criterion.weight = None
 
 
 
-class CutMix(object):
+class CutMix(Augmenter):
     def __init__(self, 
-                 alpha: float=1.0):
-    
+                 alpha: float=1.0,
+                 model: nn.Module=None,
+                 optimizer: dict=None,
+                 scheduler: dict=None):
+        super().__init__(model, optimizer, scheduler)
         self.alpha = alpha
         self.distribution = torch.distributions.beta.Beta(self.alpha, self.alpha)
         
@@ -144,7 +168,8 @@ class CutMix(object):
         
         # backward
         strategy.loss.backward()
-        strategy.optimizer.step()
+        self.optimizer.step()
+        self.scheduler.step()
     
     def _rand_bbox(self, size: torch.Tensor, lam: torch.Tensor):
         W = torch.tensor(size[2]).to(lam.device)

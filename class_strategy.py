@@ -95,7 +95,7 @@ class ClassStrategyPlugin(StrategyPlugin):
         # augmentations
         self.augmentation = augmentation
         if self.augmentation:
-            self.augmentation = create_instance(augmentation)
+            self.augmentation = create_instance(augmentation, model=model)
 
         # -------- Soft Labels --------
         self.softlabels_trainer = softlabels_trainer
