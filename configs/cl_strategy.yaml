@@ -3,20 +3,32 @@ method:
   method: CLStrategy
   args:
     model:
-      module: torchvision.models
-      method: resnet50
+      module: timm.models
+      method: resnet50d
       args:
         pretrained: True
+      head_layer: fc
+      embedding_dims: 2048
 
     optimizer:
       module: torch.optim
       method: SGD
       args:
-        lr: 0.01
+        lr: 0.0111
     
     criterion:
-      module: torch.nn
-      method: CrossEntropyLoss
+      module: loss
+      method: ClassBalancedLoss
+      args:
+        num_classes: 7
+        beta: 0.81
+        loss: 
+          module: loss
+          method: FocalLoss
+          args:
+            gamma: 0.0
+            alpha: 0.5
+            reduction: mean
     
     lr_scheduler:
       module: torch.optim.lr_scheduler
@@ -35,7 +47,10 @@ method:
         num_samples_per_batch: 5
         cut_mix: False
         temperature: 0.5
-        softlabels_patience: 10000
+        target_layer: global_pool
+        softlabels_patience: 1700
+        ep_memory_batch_size: 6
+
         memory_transforms: [
         "transforms.RandomHorizontalFlip()",
         "transforms.RandomRotation(10)",
@@ -61,6 +76,53 @@ method:
             batch_size: 32
             num_workers: 10
         
+        # softlabels learning
         loss_weights: 
-          cross_entropy: 1.0
-          kl_divergence: 0.0
+          milestones: [1700, 2000, 2100]
+          cross_entropy: [1.0, 1.0, 1.0]
+          kl_divergence: [0.5, 0.8, 1.0]
+
+        # metric learning
+        metric_learning:
+          module: modules
+          method: MetricLearner
+          args:
+            losses: 
+              - module: pytorch_metric_learning.losses
+                method: ContrastiveLoss
+                args: 
+                  pos_margin: 0.0
+                  neg_margin: 1.0
+                weight: 0.3
+              - module: pytorch_metric_learning.losses
+                method: SupConLoss
+                args:
+                  temperature: 0.1
+                weight: 0.1
+
+
+    logger:
+      module: wandb
+      method: init
+      args: 
+        project: sslad-iccv-2021
+        name: ClassBalancedFocalLoss-sota
+        entity: mrifkikurniawan
+        save_code: True
+        tags: [replay, imbalanced sampler, multistep lr scheduler, softlabels, contrastive learning, SupConLoss, resnet50d, ClassBalancedFocalLoss, sota]
+        notes: ClassBalancedFocalLoss
+
+
+hparams_optimizer:
+  direction: maximize
+  n_trials: 20
+  hparams:
+    - name: plugins.args.metric_learning.args.losses.weight
+      index: 1
+      method: suggest_discrete_uniform
+      trial_args: 
+        name: TripletMarginLoss_weight
+        low: 0.1
+        high: 1.0
+        q: 0.1
+

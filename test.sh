@@ -5,4 +5,5 @@ python3.9 classification.py \
 --store \
 --gpu_id 4 \
 --config configs/cl_strategy.yaml \
---comment cl_strategy_online_imbalanced_sampler 
+--comment cl_strategy_online_imbalanced_sampler \
+--test

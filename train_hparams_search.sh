@@ -1,4 +1,4 @@
-python3.9 classification.py \
+python3.9 classification_optuna.py \
 --name logs/cl_strategy/cl_strategy_online_imbalanced_sampler \
 --root /home/rifki/continual_learning/datasets \
 --num_workers 8 \
