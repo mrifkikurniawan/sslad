@@ -43,15 +43,15 @@ class MemoryDataset(Dataset):
             targets = [dict(label=targets['label'][i],  
                             logit=targets['logit'][i],
                             feature=targets['feature'][i]) for i in range(len_inputs)]
+
             
         # invers transform
         if isinstance(inputs[0], torch.Tensor):
             inputs_ = [_default_inverse_transform(img) for img in inputs]
             inputs = inputs_
-            
         self._inputs += inputs
         self._targets += targets
-    
+        
     def get_labels(self):
         return [int(target['label']) for target in self.targets]
     

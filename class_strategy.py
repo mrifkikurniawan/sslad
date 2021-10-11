@@ -201,7 +201,7 @@ class ClassStrategyPlugin(StrategyPlugin):
                 print(f"Current milestone: {self.current_milestone}")
                 print(f"CE Loss: {self.loss_weights['cross_entropy'][self.milestone_idx]}")
                 print(f"KL Loss: {self.loss_weights['kl_divergence'][self.milestone_idx]}")
-            
+           
             memory_batch_size = self.y_memory['logit'].shape[0]
             logits = strategy.mb_output[-memory_batch_size:]
             softlabels = self.softmaxt(self.y_memory['logit'].type_as(logits), act_f='softmax')
@@ -260,6 +260,7 @@ class ClassStrategyPlugin(StrategyPlugin):
             
         # logging
         self.logger.log({"train/loss": strategy.loss.item()})
+
 
     def after_training_epoch(self, strategy: 'BaseStrategy', **kwargs):
         pass

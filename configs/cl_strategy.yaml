@@ -50,6 +50,7 @@ method:
         target_layer: global_pool
         softlabels_patience: 1700
         ep_memory_batch_size: 6
+
         memory_transforms: [
         "transforms.RandomHorizontalFlip()",
         "transforms.RandomRotation(10)",
@@ -124,3 +125,4 @@ hparams_optimizer:
         low: 0.1
         high: 1.0
         q: 0.1
+

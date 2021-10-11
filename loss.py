@@ -9,6 +9,7 @@ from torch.autograd import Variable
 
 __all__ = ['KLDivLoss', 'FocalLoss']
 
+
 class KLDivLoss(nn.Module):
     def __init__(self, temperature: float, **kwargs):
         super(KLDivLoss, self).__init__()
@@ -174,3 +175,4 @@ class ClassBalancedLoss(nn.Module):
         self.dataset_distribution += distribution
         
         return loss
+

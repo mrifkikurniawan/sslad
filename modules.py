@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Sequence, Union
+from typing import Dict, List, Sequence, Union, Dict
 from copy import deepcopy
 import types
 from tqdm import tqdm
@@ -126,6 +126,7 @@ class RMSampler(object):
         
         if num_samples > len(dataset):
             num_samples = len(dataset)
+
         
         # register forward hook to get features
         self.target_layer = target_layer
@@ -148,6 +149,7 @@ class RMSampler(object):
         
         # remove hook
         self.remove_hook()
+
         
         return selected_images, selected_targets
     
@@ -234,6 +236,7 @@ class RMSampler(object):
                     logits.append(cert_value)
                     features.append(self.features[self.target_layer][i].detach().cpu().squeeze())
 
+
         # return back the original transform
         dataset.transform = original_dataset_transform
         outputs['logits'] = logits
@@ -290,6 +293,7 @@ class UncertaintySampler(object):
         
         # remove hook
         self.remove_hook()
+
         
         return selected_images, selected_targets
 
@@ -337,6 +341,7 @@ class UncertaintySampler(object):
         outputs['logits'] = logits
         outputs['features'] = features
         return samples_scores, outputs        
+
                 
     def remove_hook(self):
         """
@@ -392,6 +397,7 @@ class Prototypes(object):
     def embedding(self) -> Dict[str, torch.Tensor]:
         return self._embedding
     
+
 
 
 class SoftmaxT(nn.Module):
@@ -469,3 +475,4 @@ class MetricLearner(object):
         for i in range(len(self.loss_modules)):
             loss += self.loss_modules[i].module(embeddings, labels) * (self.loss_modules[i].weight).type_as(loss)
         return loss
+
