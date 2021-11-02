@@ -55,6 +55,7 @@ or see the [train.sh](train.sh) for the example.
 | + Class Balanced Focal loss<sup>*</sup> | **64.01 (+1.03)** | **64.53 (+4.85)** |
 | + Head Fine-tuning with Class Balanced Replay | <span style="color:red">65.291 (+1.28)</span> | <span style="color:red">62.58 (-1.56)</span> |
 | + Head Fine-tuning with Soft Labels Retrospection | <span style="color:red">66.116 (+0.83)</span> | <span style="color:red">62.97 (+0.39)</span> |
+
 <sup>*</sup>Applied to our final method.
 
 ## File overview
