@@ -48,6 +48,17 @@ def seed_everything(seed_value):
     
 # from https://github.com/drimpossible/GDumb/blob/74a5e814afd89b19476cd0ea4287d09a7df3c7a8/src/utils.py#L102:5
 def cutmix_data(x, y, alpha=1.0, cutmix_prob=0.5):
+    """[Cut Mix augmentation]
+
+    Args:
+        x ([torch.Tensor]): [batch of images]
+        y ([torch.Tensor]): [batch of targets]
+        alpha (float, optional): [alpha hyperparameter]. Defaults to 1.0.
+        cutmix_prob (float, optional): [cutmix probability]. Defaults to 0.5.
+
+    Returns:
+        [torch.Tensor]: [augmented images and targets]
+    """
     assert alpha > 0
     # generate mixed sample
     lam = np.random.beta(alpha, alpha)
@@ -181,6 +192,15 @@ def clone_module(module, memo=None):
 
 
 def get_batch_distribution(inputs: torch.Tensor, num_classes: int) -> torch.Tensor:
+    """[function to get classes distribution within a batch]
+
+    Args:
+        inputs (torch.Tensor): [class labels]
+        num_classes (int): [number of classes]
+
+    Returns:
+        torch.Tensor: [distribution of classes]
+    """
     distribution = torch.zeros(num_classes)
     for c in range(num_classes):
         distribution[c] = torch.sum(inputs == c)
