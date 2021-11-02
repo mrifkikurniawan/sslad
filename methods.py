@@ -17,7 +17,16 @@ class CLStrategy(object):
                  lr_scheduler: edict,
                  logger: edict
                  ):
-        
+        """[Our continal learning strategy method]
+
+        Args:
+            model (edict): [model configuration]
+            optimizer (edict): [optimizer configuration]
+            criterion (edict): [loss function configuration]
+            plugins (edict): [plugins configuration]
+            lr_scheduler (edict): [lr scheduler configuration]
+            logger (edict): [logger configuration]
+        """
         # model
         head_layer = model.head_layer
         embedding_dims = model.embedding_dims

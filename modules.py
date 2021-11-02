@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Sequence, Union, Dict
+from typing import Dict, List, Union, Dict
 from copy import deepcopy
 import types
 from tqdm import tqdm
@@ -12,13 +12,11 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Subset, TensorDataset, Dataset
+from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 from torch.nn import functional as F
 
-from avalanche.training.plugins.strategy_plugin import StrategyPlugin
-from avalanche.benchmarks.utils.data_loader import ReplayDataLoader
-from avalanche.benchmarks.utils import AvalancheConcatDataset, AvalancheDataset
+from avalanche.benchmarks.utils import  AvalancheDataset
 from avalanche.training.strategies import BaseStrategy
 
 from utils import *
@@ -35,6 +33,16 @@ class OnlineCLStorage(object):
                  mem_size: int=1000,
                  target_layer: str=None,
                  embedding_dims: int=2048):
+        """[Episodic memory class to store the samples and execute online and periodic sampling.]
+
+        Args:
+            transform (callable, optional): [memory sample augmentations]. Defaults to None.
+            online_sampler (callable, optional): [online sampler module]. Defaults to None.
+            periodic_sampler (callable, optional): [periodic sampler module]. Defaults to None.
+            mem_size (int, optional): [maximum capacity of memory]. Defaults to 1000.
+            target_layer (str, optional): [target layer to get embeddings]. Defaults to None.
+            embedding_dims (int, optional): [embeddings dimensions]. Defaults to 2048.
+        """
         super().__init__()
         
         self.inputs = list()
@@ -62,7 +70,14 @@ class OnlineCLStorage(object):
             return MemoryDataset(inputs=self.inputs, targets=self.targets, transform=self.transform)
             
     def periodic_update_memory(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples: int,  **kwargs):
-        
+        """[Periodic memory update function]
+
+        Args:
+            x (torch.Tensor): [input images. Dimensions: (batch_size, channels, height, width)]
+            y (Dict[str, torch.Tensor]): [targets that containing multiple targets, e.g.: labels and logits]
+            model (nn.Module): [model to get embeddings]
+            num_samples (int): [number of samples to be selected]
+        """        
         # append new batch datapoints into dataset
         # for sampling strategy
         if not 'feature' in y:
@@ -83,7 +98,14 @@ class OnlineCLStorage(object):
             f"Memory size is over capacity, max size is {self.mem_size} while current capacity is {self.current_capacity}"
 
     def online_update_memory(self, x: torch.Tensor, y: Dict[str, torch.Tensor], model: nn.Module, num_samples, **kwargs):
-        """ Update memory with new experience. """
+        """[online memory update function]
+
+        Args:
+            x (torch.Tensor): [input images. Dimensions: (batch_size, channels, height, width)]
+            y (Dict[str, torch.Tensor]): [targets that containing multiple targets, e.g.: labels and logits]
+            model (nn.Module): [model to get embeddings]
+            num_samples (int): [number of samples to be selected]
+        """
         remain_capacity = self.mem_size - self.current_capacity
         if num_samples > remain_capacity:
             num_samples = remain_capacity
@@ -116,14 +138,19 @@ class RMSampler(object):
                  augmentation: str="vr_randaug",
                  batch_size: int=32,
                  num_workers: int=32):
-        
+        """[Raimbow memory sampler mechanism adopted from original Rainbow Memory algorithm: https://github.com/clovaai/rainbow-memory]
+
+        Args:
+            augmentation (str, optional): [augmentation for monte-carlo]. Defaults to "vr_randaug".
+            batch_size (int, optional): [batch size for pass forward]. Defaults to 32.
+            num_workers (int, optional): [number of workers for dataloader]. Defaults to 32.
+        """        
         self.augmentation = augmentation
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.handlers = list()
     
     def __call__(self, dataset: Dataset, num_samples: int, model: nn.Module, target_layer: str) -> Image:
-        
         if num_samples > len(dataset):
             num_samples = len(dataset)
 
@@ -263,7 +290,13 @@ class UncertaintySampler(object):
                  num_workers: int=32,
                  scoring_method: str="entropy",
                  negative_mining: bool=True):
-        
+        """[Sampler based on uncertainty scores]
+
+        Args:
+            num_workers (int, optional): [number of worker for dataloader]. Defaults to 32.
+            scoring_method (str, optional): [uncertainty scoring method]. Defaults to "entropy".
+            negative_mining (bool, optional): [negative mining flag]. Defaults to True.
+        """        
         self.num_workers = num_workers
         self.scoring = getattr(scoring, scoring_method)
         self.negative_mining = negative_mining
@@ -403,6 +436,11 @@ class Prototypes(object):
 class SoftmaxT(nn.Module):
 
     def __init__(self, temperature: Union[float, int, torch.Tensor]) -> None:
+        """[Normalized softmax with temperature]
+
+        Args:
+            temperature (Union[float, int, torch.Tensor]): [temperature hparam] 
+        """
         super(SoftmaxT, self).__init__()
 
         if isinstance(temperature, float) or isinstance(temperature, int):
@@ -461,7 +499,11 @@ class ForwardTransfer(object):
     
 class MetricLearner(object):
     def __init__(self, losses: List[dict]):
-        
+        """[Deep metric learning module to measure metric learning similarity]
+
+        Args:
+            losses (List[dict]): [list of loss functions]
+        """        
         # create loss instances
         self.loss_modules: List[dict] = list()
         for loss in losses:
@@ -471,6 +513,15 @@ class MetricLearner(object):
             self.loss_modules.append(loss_module)
             
     def __call__(self, embeddings: torch.Tensor, labels: torch.Tensor):
+        """[pass forward call]
+
+        Args:
+            embeddings (torch.Tensor): [embeddings inputs. Dimensions: (batch_size, embedding_size)]
+            labels (torch.Tensor): [labels targets. Dimensions: (batch_size,)]
+
+        Returns:
+            [torch.Tensor]: [loss value output]
+        """
         loss = torch.tensor(0.0).type_as(embeddings)
         for i in range(len(self.loss_modules)):
             loss += self.loss_modules[i].module(embeddings, labels) * (self.loss_modules[i].weight).type_as(loss)

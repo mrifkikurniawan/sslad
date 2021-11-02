@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, List, Union
 import numpy as np
 
 from utils import get_batch_distribution, create_instance
@@ -12,10 +12,24 @@ __all__ = ['KLDivLoss', 'FocalLoss']
 
 class KLDivLoss(nn.Module):
     def __init__(self, temperature: float, **kwargs):
+        """[KL Divergence Loss]
+
+        Args:
+            temperature (float): [temperature for normalized softmax]
+        """
         super(KLDivLoss, self).__init__()
         self.temperature = torch.Tensor([temperature])
         
     def forward(self, logits: torch.Tensor, y: torch.Tensor):
+        """[forward pass]
+
+        Args:
+            logits (torch.Tensor): [logits from model. Dimensions: (batch_size, num_classes)]] 
+            y (torch.Tensor): [target labels. Dimensions: (batch_size, num_classes)]
+
+        Returns:
+            [torch.Tensor]: [computed loss value]
+        """
         y = y.type_as(logits)
         self.temperature = self.temperature.type_as(logits)
         
@@ -28,6 +42,13 @@ class KLDivLoss(nn.Module):
 class FocalLoss(nn.Module):
     def __init__(self, alpha: float, gamma: Optional[float] = 2.0,
                  reduction: Optional[str] = 'none') -> None:
+        """[Focal Loss Class. Hacked from: https://github.com/kornia/kornia/blob/master/kornia/losses/focal.py]
+
+        Args:
+            alpha (float): [alpha hyperparameter for focal loss]
+            gamma (Optional[float], optional): [gamma hyperparams]. Defaults to 2.0.
+            reduction (Optional[str], optional): [reduction type]. Defaults to 'none'.
+        """
         super(FocalLoss, self).__init__()
         self.alpha: float = alpha
         self.gamma: Optional[float] = gamma
@@ -39,6 +60,16 @@ class FocalLoss(nn.Module):
             input: torch.Tensor,
             target: torch.Tensor, 
             weight: torch.Tensor=None) -> torch.Tensor:
+        """[focal loss forward pass]
+
+        Args:
+            input (torch.Tensor): [input tensor. Dims: (batch_size, num_classes)]
+            target (torch.Tensor): [target tensor. Dims: (batch_size, num_classes)]
+            weight (torch.Tensor, optional): [weigths for each class. Dims: (num_classes)]. Defaults to None.
+
+        Returns:
+            torch.Tensor: [computed loss value]
+        """
         if not torch.is_tensor(input):
             raise TypeError("Input type is not a torch.Tensor. Got {}"
                             .format(type(input)))
@@ -84,7 +115,13 @@ class FocalLoss(nn.Module):
     
 
 class MultipleLosses(torch.nn.Module):
-    def __init__(self, losses, weights=None):
+    def __init__(self, losses: Union[Dict, List], weights: Union[Dict, List]=None):
+        """[Multiple Loss Wrapper Module. Hacked from: https://github.com/KevinMusgrave/pytorch-metric-learning/blob/6bfa880b8d2acafb7c6d52041d2bb14ed41aee76/src/pytorch_metric_learning/losses/base_metric_loss_function.py#L62]
+
+        Args:
+            losses (Union[Dict, List]): [losses instance in dictionary or list]
+            weights (Union[Dict, List], optional): [weights associated to each loss]. Defaults to None.
+        """
         super().__init__()
         self.is_dict = isinstance(losses, dict)
         self.losses = (
@@ -102,6 +139,15 @@ class MultipleLosses(torch.nn.Module):
             )
 
     def forward(self, inputs, labels):
+        """[forward pass]
+
+        Args:
+            inputs ([torch.Tensor]): [inputs to loss module]
+            labels ([torch.Tensor]): [targets to loss module]
+
+        Returns:
+            [torch.Tensor]: [loss value]
+        """
         total_loss = 0
         iterable = self.losses.items() if self.is_dict else enumerate(self.losses)
         for i, loss_func in iterable:
@@ -128,6 +174,12 @@ class CostSenstiveLoss(nn.Module):
                  loss: dict=None,
                  num_classes: int=7, 
                  **kwargs: dict):
+        """[Cost Sensitive Loss Class.]
+
+        Args:
+            loss (dict, optional): [loss configuration]. Defaults to None.
+            num_classes (int, optional): [number of classes]. Defaults to 7.
+        """
         super().__init__()
         
         self.num_classes = num_classes
@@ -138,6 +190,15 @@ class CostSenstiveLoss(nn.Module):
         self.loss = create_instance(loss)
         
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor):
+        """[forward pass]
+
+        Args:
+            inputs (torch.Tensor): [inputs]
+            targets (torch.Tensor): [targets]
+
+        Returns:
+            [torch.Tensor]: [loss value]
+        """
         loss = torch.tensor(0.0).type_as(inputs)
         distribution = get_batch_distribution(targets, self.num_classes) + self.epsilon
         weight = (torch.min(distribution[1:]) / distribution).type_as(inputs)
@@ -155,6 +216,13 @@ class ClassBalancedLoss(nn.Module):
                  beta: float=0.9,
                  num_classes: int=7, 
                  **kwargs):
+        """[Class Balanced Loss Module]
+
+        Args:
+            loss (dict, optional): [loss function configuration]. Defaults to None.
+            beta (float, optional): [beta hyperparam]. Defaults to 0.9.
+            num_classes (int, optional): [number of classes]. Defaults to 7.
+        """
         super().__init__()
         
         self.beta = torch.tensor(beta) 
@@ -166,6 +234,15 @@ class ClassBalancedLoss(nn.Module):
         self.epsilon = 1e-6
     
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor):
+        """[pass forward]
+
+        Args:
+            inputs (torch.Tensor): [inputs feed to loss.]
+            targets (torch.Tensor): [targets feed to loss.]
+
+        Returns:
+            [torch.Tensor]: [loss value]
+        """
         loss = torch.tensor(0.0).type_as(inputs)
         distribution = get_batch_distribution(targets, self.num_classes) + self.epsilon
         weight = ((1.0 - self.beta) / (1.0 - self.beta**distribution)).type_as(inputs)

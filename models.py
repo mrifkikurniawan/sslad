@@ -6,6 +6,12 @@ class MLP(nn.Module):
     def __init__(self, 
                  input_dims:int, 
                  num_classes:int):
+        """[Multi-layer Perceptron classifier]
+
+        Args:
+            input_dims (int): [dimension of inputs]
+            num_classes (int): [number of output classes]
+        """
         super(MLP, self).__init__()
         
         self.classifier = nn.Sequential(nn.BatchNorm1d(input_dims),

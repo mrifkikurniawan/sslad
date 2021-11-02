@@ -15,7 +15,14 @@ class MemoryDataset(Dataset):
                  targets: list, 
                  transform: callable=None, 
                  target_transform: list=None):
-        
+        """[Memory Dataset Class]
+
+        Args:
+            inputs (list): [inputs]
+            targets (list): [targets]
+            transform (callable, optional): [memory augmentations for inputs]. Defaults to None.
+            target_transform (list, optional): [memory augmentations for targets]. Defaults to None.
+        """
         if isinstance(inputs[0], torch.Tensor):
             inputs_ = [_default_inverse_transform(img) for img in inputs]
             inputs = inputs_
@@ -36,7 +43,12 @@ class MemoryDataset(Dataset):
     def append(self, 
                inputs: Union[torch.Tensor, List[torch.Tensor]], 
                targets: Dict[str, torch.Tensor]):
-        
+        """[append function for add new data to memory]
+
+        Args:
+            inputs (Union[torch.Tensor, List[torch.Tensor]]): [input in list tensor]
+            targets (Dict[str, torch.Tensor]): [target in dictionary tensor]
+        """
         if isinstance(inputs, torch.Tensor) or isinstance(targets, dict):
             len_inputs = inputs.shape[0]
             inputs = [x for x in inputs]

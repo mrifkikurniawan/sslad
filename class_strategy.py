@@ -77,6 +77,27 @@ class ClassStrategyPlugin(StrategyPlugin):
                  target_layer: str=None,
                  metric_learning: dict=None,
                  embedding_dims: int=None):
+        """[Our proposed learning strategy module]
+
+        Args:
+            online_sampler (dict, optional): [online sampler configuration]. Defaults to None.
+            periodic_sampler (dict, optional): [periodic sampler configuration]. Defaults to None.
+            mem_size (int, optional): [maximum memory size capacity]. Defaults to 1000.
+            memory_transforms (List[Dict], optional): [memory augmentations configuration]. Defaults to None.
+            sweep_memory_every_n_iter (int, optional): [iterations number for periodic memory update]. Defaults to 1000.
+            memory_sweep_default_size (int, optional): [default size of memory after periodic update]. Defaults to 500.
+            num_samples_per_batch (int, optional): [stored samples size in online sampling]. Defaults to 5.
+            cut_mix (Union[bool, dict], optional): [cut mix augmentation flag]. Defaults to False.
+            ep_memory_batch_size (int, optional): [replay batch size]. Defaults to 6.
+            lr_scheduler (torch.optim.lr_scheduler, optional): [lr scheduler instance]. Defaults to None.
+            temperature (float, optional): [temperature for softmax]. Defaults to 0.5.
+            loss_weights (dict, optional): [weights for loss functions]. Defaults to None.
+            softlabels_patience (int, optional): [soft labels iterations patience]. Defaults to 1000.
+            logger (object, optional): [logger instance]. Defaults to None.
+            target_layer (str, optional): [target layer for deep metric learning]. Defaults to None.
+            metric_learning (dict, optional): [metric learning configuration]. Defaults to None.
+            embedding_dims (int, optional): [dimensions of embeddings size]. Defaults to None.
+        """
         super(ClassStrategyPlugin).__init__()
         
         self.mem_size = mem_size
