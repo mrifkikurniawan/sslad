@@ -79,3 +79,18 @@ have to be implemented, you can just delete those that you don't need.*
 
 `classification_util.py` & `haitain_classification.py`: These files contain helper code for 
 dataloading etc. There should be no reason to change these.
+
+
+### Citation
+
+Please consider citing our paper in your publications if the project helps your research. BibTeX reference is as follow.
+
+```
+@article{Kurniawan2021OnlineCL,
+  title={Online Continual Learning via Multiple Deep Metric Learning and Uncertainty-guided Episodic Memory Replay - 3rd Place Solution for ICCV 2021 Workshop SSLAD Track 3A Continual Object Classification},
+  author={Muhammad Rifki Kurniawan and Xing Wei and Yihong Gong},
+  journal={ArXiv},
+  year={2021},
+  volume={abs/2111.02757}
+}
+```
